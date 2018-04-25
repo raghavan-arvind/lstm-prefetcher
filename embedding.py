@@ -59,7 +59,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     output_enc = one_hot_encode(output_deltas)
     pcs_enc = one_hot_encode(pcs)
 
-    # clear up some virtual memory
+    # clear up some memory
     del input_deltas
     del output_deltas
     del pcs
@@ -102,6 +102,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                             output_step = cur_trace[time_steps]
                             output_step_enc = [False for i in range(len(output_enc))]
                             output_step_enc[output_enc[output_step[0]]] = True
+
                             trace_out.append(output_step_enc)
 
                         del cur_trace[0]
