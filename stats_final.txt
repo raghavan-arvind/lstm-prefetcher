@@ -1,0 +1,104 @@
+-- Trace Summary --
+Number of Load Instructions
+astar_163B: 85,678,347
+bwaves_1861B: 122,005,656
+GemsFDTD_109B: 113,678,784
+lbm_94B: 58,307,336
+leslie3d_1116B: 113,519,504
+libquantum_1210B: 29,914,109
+mcf_46B: 76,271,148
+milc_360B: 83,348,514
+omnetpp_340B: 107,325,436
+soplex_66B: 65,940,588
+sphinx3_2520B.txt: 60,198,974
+
+Num Unique Addresses:
+astar_163B: 849,474
+bwaves_1861B: 5,441,150
+GemsFDTD_109B: 6,524,210
+lbm_94B: 12,438,126
+leslie3d_1116B: 1,440,543
+libquantum_1210B: 524,305
+mcf_46B: 4,765,843
+milc_360B: 4,091,631
+omnetpp_340B: 645,695
+soplex_66B: 858,159
+sphinx3_2520B.txt: 124,342
+
+Num Unique Deltas:
+astar_163B: 6,184,376
+bwaves_1861B: 20,841,735
+GemsFDTD_109B: 8,178,922
+lbm_94B: 8,434,552
+leslie3d_1116B: 7,025,003
+libquantum_1210B: 124
+mcf_46B: 13,875,274
+milc_360B: 13,262,795
+omnetpp_340B: 14,744,338
+soplex_66B: 5,043,603
+sphinx3_2520B.txt: 857,986
+
+Num Unique PC:
+astar_163B: 399
+bwaves_1861B: 263
+GemsFDTD_109B: 2,121
+lbm_94B: 140
+leslie3d_1116B: 7,501
+libquantum_1210B: 80
+mcf_46B: 323
+milc_360B: 505
+omnetpp_340B: 2,752
+soplex_66B: 4,682
+sphinx3_2520B.txt: 4,195
+
+Addresses Needed for 50% Coverage: 
+astar_163B: 4
+bwaves_1861B: 57,643
+GemsFDTD_109B: 1,921,672
+lbm_94B: 273,929
+leslie3d_1116B: 12,097
+libquantum_1210B: 216,940
+mcf_46B: 4,661
+milc_360B: 10
+omnetpp_340B: 44
+soplex_66B: 20,801
+sphinx3_2520B.txt: 10,312
+
+Deltas Needed for 50% Coverage: 
+astar_163B: 11
+bwaves_1861B: 73
+GemsFDTD_109B: 3,585
+lbm_94B: 27
+leslie3d_1116B: 987
+libquantum_1210B: 1
+mcf_46B: 3,725
+milc_360B: 7
+omnetpp_340B: 1,592
+soplex_66B: 2,632
+sphinx3_2520B.txt: 81
+
+Coverage from 50000 Addresses: 
+astar_163B: 87.369%
+bwaves_1861B: 48.23%
+GemsFDTD_109B: 14.345%
+lbm_94B: 45.391%
+leslie3d_1116B: 56.325%
+libquantum_1210B: 12.613%
+mcf_46B: 71.455%
+milc_360B: 61.52%
+omnetpp_340B: 79.746%
+soplex_66B: 59.854%
+sphinx3_2520B.txt: 98.163%
+
+Coverage from 50000 Deltas: 
+astar_163B: 71.43%
+bwaves_1861B: 60.644%
+GemsFDTD_109B: 58.551%
+lbm_94B: 71.979%
+leslie3d_1116B: 68.064%
+libquantum_1210B: 100.0%
+mcf_46B: 58.199%
+milc_360B: 75.753%
+omnetpp_340B: 55.988%
+soplex_66B: 64.201%
+sphinx3_2520B.txt: 82.065%
