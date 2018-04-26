@@ -152,26 +152,18 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     # ungodly return statement, but what can you do....
     return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1
 
-# saves embeddings to a dump file
-def dump_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
-    deltas, pcs = crawl_deltas(filename, limit=lim)
-
-    input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)
-    size = min(50000, len(deltas.keys()))
-    output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
-
-    trace_in_delta, trace_in_pc, trace_out = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
-    debug("Created " + str(len(trace_out)) + " sets!\n")
-    
-    pickle.dump((np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1))
-
+def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
+    benchmark = filename[:filename.index(".")]
+    with open(benchmark+"_embeddings.dump", "wb") as f:
+        np.savez(f, get_embeddings(filename, time_steps, train_ratio=train_ratio, lim=lim))
 
 # main testing
 if __name__ == '__main__':
-    trace_in_delta, trace_in_pc, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20, lim=50)
+    dump_embedding(sys.argv[1], 20)
+    '''trace_in_delta, trace_in_pc, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20, lim=50)
     print(trace_in_delta)
     print("\n")
     print(trace_out)
 
     print(len(trace_in_delta))
-    print(len(trace_out))
+    print(len(trace_out))'''

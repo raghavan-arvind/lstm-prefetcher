@@ -23,7 +23,7 @@ train_ratio = 0.70
 trace_in_delta, trace_in_pc, trace_out, n_input_deltas, n_pcs, n_output_deltas  = get_embeddings(sys.argv[1], time_steps)
 
 # number of inputs to LSTM
-n_input = 2
+n_input = n_input_deltas + n_pcs
 
 # number of output deltas
 n_classes = n_output_deltas 
@@ -57,18 +57,21 @@ x_pc_one_hot = tf.one_hot(x_pc, n_pcs, dtype=tf.int32)
 
 x_one_hot_concat = tf.concat([x_delta_one_hot, x_pc_one_hot], 3)
 
+# remove extra dimension
+x_fix = tf.reshape(x_one_hot_concat, (-1, time_steps, n_input))
+
+# cast from int to float for static_rnn
+x = tf.cast(x_fix, tf.float32)
+
 # input label placeholder
 y = tf.placeholder("int32", [None, 1]) # takes it in as 1 dimensional
 y_one_hot = tf.one_hot(y, n_classes)
 
-# remove extra dimension
-x_fix = tf.reshape(x_one_hot_concat, (-1, time_steps, n_input_deltas + n_pcs))
-
-# cast from int to float for static_rnn
-x_fix_cast = tf.cast(x_fix, tf.float32)
+# fix dimensions
+y_final = tf.reshape(y_one_hot, (-1, n_classes))
 
 # unstack inputs into sequence for static_rnn
-inputs = tf.unstack(x_fix_cast, time_steps, 1);
+inputs = tf.unstack(x, time_steps, 1);
 
 
 ''' defining network '''
@@ -79,12 +82,12 @@ prediction = tf.matmul(outputs[-1], out_weights) + out_bias
 
 # loss function
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-    logits=prediction, labels=y_one_hot))
+    logits=prediction, labels=y_final))
 # optimization
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
-# model evaluation
-correct_prediction = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
+
+correct_prediction = tf.equal(tf.argmax(prediction, 1), tf.argmax(y_final, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 # top 10 evaluation to match milad
