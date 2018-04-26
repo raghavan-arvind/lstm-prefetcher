@@ -20,7 +20,7 @@ batch_size = 128
 train_ratio = 0.70
 
 # get datasets
-trace_in, trace_out, n_input_deltas, n_pcs, n_output_deltas  = get_embeddings(sys.argv[1], time_steps)
+trace_in_delta, trace_in_pc, trace_out, n_input_deltas, n_pcs, n_output_deltas  = get_embeddings(sys.argv[1], time_steps)
 
 # number of inputs to LSTM
 n_input = 2
@@ -31,10 +31,12 @@ assert n_classes <= 50001, "%d > 50001 output classes!" % n_classes
 
 
 # split into training sets
-train_x, train_y, test_x, test_y = split_training(trace_in, trace_out, time_steps, train_ratio=train_ratio)
+# this is so ugly but what can you do
+train_x_delta, train_x_pc, train_y, test_x_delta, test_x_pc, test_y = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=train_ratio)
 
 # clear up space
-del trace_in
+del trace_in_delta
+del trace_in_pc
 del trace_out
 
 # weights and biases of appropriate shape
@@ -47,19 +49,32 @@ None - means don't enforce batch_size, bc we use
        a different one for testing than for training 
 '''
 # input instruction placeholder
-x = tf.placeholder("float", [None, time_steps, n_input]) # None means t
+x_delta = tf.placeholder("int32", [None, time_steps, 1]) # None means t
+x_pc = tf.placeholder("int32", [None, time_steps, 1]) # None means t
+
+x_delta_one_hot = tf.one_hot(x_delta, n_input_deltas, dtype=tf.int32)
+x_pc_one_hot = tf.one_hot(x_pc, n_pcs, dtype=tf.int32)
+
+x_one_hot_concat = tf.concat([x_delta_one_hot, x_pc_one_hot], 3)
+
 # input label placeholder
-y = tf.placeholder("int64", [None, 1]) # takes it in as 1 dimensional
+y = tf.placeholder("int32", [None, 1]) # takes it in as 1 dimensional
 y_one_hot = tf.one_hot(y, n_classes)
 
-# process input tensor to list [batch_size, n_inputs] of length time_steps
-inputs = tf.unstack(x, time_steps, 1);
+# remove extra dimension
+x_fix = tf.reshape(x_one_hot_concat, (-1, time_steps, n_input_deltas + n_pcs))
+
+# cast from int to float for static_rnn
+x_fix_cast = tf.cast(x_fix, tf.float32)
+
+# unstack inputs into sequence for static_rnn
+inputs = tf.unstack(x_fix_cast, time_steps, 1);
+
 
 ''' defining network '''
 lstm_layer = rnn.BasicLSTMCell(num_units, forget_bias=1)
-outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
+outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float")
 
-''' EDGE OF UNDERSTANDING '''
 prediction = tf.matmul(outputs[-1], out_weights) + out_bias
 
 # loss function
@@ -85,18 +100,22 @@ with tf.Session() as sess:
 
     while iterator<800 and (iterator+1)*batch_size < len(train_y):
         x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
-        batch_x = train_x[x_range[0]:x_range[1]]
-        batch_x = batch_x.reshape((batch_size * time_steps * n_input))
-        batch_x = batch_x.reshape((batch_size, time_steps, n_input))
+        batch_x_delta = train_x_delta[x_range[0]:x_range[1]]
+        batch_x_delta = batch_x_delta.reshape((batch_size * time_steps * 1))
+        batch_x_delta = batch_x_delta.reshape((batch_size, time_steps, 1))
+
+        batch_x_pc = train_x_pc[x_range[0]:x_range[1]]
+        batch_x_pc = batch_x_pc.reshape((batch_size * time_steps * 1))
+        batch_x_pc = batch_x_pc.reshape((batch_size, time_steps, 1))
 
         batch_y = train_y[iterator*batch_size:(iterator+1)*batch_size]
         batch_y = batch_y.reshape((batch_size, 1))
 
-        sess.run(opt, feed_dict={x: batch_x, y: batch_y})
+        sess.run(opt, feed_dict={x_delta: batch_x_delta, x_pc: batch_x_pc, y: batch_y})
 
         if iterator % 10 == 0:
-            acc=sess.run(accuracy,feed_dict={x:batch_x,y:batch_y})
-            los=sess.run(loss,feed_dict={x:batch_x,y:batch_y})
+            acc=sess.run(accuracy,feed_dict={x_delta:batch_x_delta, x_pc:batch_x_pc,y:batch_y})
+            los=sess.run(loss,feed_dict={x_delta:batch_x_delta, x_pc:batch_x_pc,y:batch_y})
             print("For iter ",iter)
             print("Accuracy ",acc)
             print("Loss ",los)
@@ -113,6 +132,7 @@ with tf.Session() as sess:
         '''
 
     # evaluate on second half of data set
-    test_data = test_x.reshape((-1, time_steps, n_input)) # -1 means make batch size the whole data set
+    test_data_delta = test_x_delta.reshape((-1, time_steps, 1)) # -1 means make batch size the whole data set
+    test_data_pc = test_x_pc.reshape((-1, time_steps, 1)) 
     test_label = test_y.reshape((-1, 1))
-    print("Testing Accuracy:", sess.run(accuracy, feed_dict={x: test_data, y: test_label}))
+    print("Testing Accuracy:", sess.run(accuracy, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))

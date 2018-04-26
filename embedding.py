@@ -3,6 +3,7 @@ from tensorflow.contrib import rnn
 import numpy as np
 import sys,os
 import re
+import pickle
 
 DEBUG = True
 def debug(message):
@@ -74,7 +75,8 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     del pcs
 
     # inputs and outputs to return
-    trace_in = []
+    trace_in_delta = []
+    trace_in_pc = []
     trace_out = []
 
     # build the current trace
@@ -106,7 +108,8 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                         for step in cur_trace[:-1]:
                             delta_index = enc(input_enc, step[0])
                             pc_index = enc(pcs_enc, step[1])
-                            trace_in.append((delta_index, pc_index))
+                            trace_in_delta.append(delta_index)
+                            trace_in_pc.append(pc_index)
                         
                         output_step = cur_trace[time_steps]
                         output_index = enc(output_enc, output_step[0])
@@ -119,20 +122,22 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                 if limit != -1 and count == limit:
                     break
     debug("done!\n")
-    return trace_in, trace_out
+    return trace_in_delta, trace_in_pc, trace_out
 
 
-def split_training(trace_in, trace_out, time_steps, train_ratio=0.70):
+def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
     cutoff_y = int(train_ratio*len(trace_out))
     cutoff_x = cutoff_y * time_steps
 
-    train_x = trace_in[:cutoff_x]
+    train_x_delta = trace_in_delta[:cutoff_x]
+    train_x_pc = trace_in_pc[:cutoff_x]
     train_y = trace_out[:cutoff_y]
 
-    test_x = trace_in[cutoff_x:]
+    test_x_delta = trace_in_delta[cutoff_x:]
+    test_x_pc = trace_in_pc[cutoff_x:]
     test_y = trace_out[cutoff_y:]
 
-    return np.array(train_x), np.array(train_y), np.array(test_x), np.array(test_y)
+    return np.array(train_x_delta), np.array(train_x_pc), np.array(train_y), np.array(test_x_delta), np.array(test_x_pc), np.array(test_y)
 
 def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     deltas, pcs = crawl_deltas(filename, limit=lim)
@@ -141,18 +146,32 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
-    trace_in, trace_out = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    trace_in_delta, trace_in_pc, trace_out = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
     # ungodly return statement, but what can you do....
-    return np.array(trace_in), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1
+    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1
+
+# saves embeddings to a dump file
+def dump_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
+    deltas, pcs = crawl_deltas(filename, limit=lim)
+
+    input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)
+    size = min(50000, len(deltas.keys()))
+    output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
+
+    trace_in_delta, trace_in_pc, trace_out = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    debug("Created " + str(len(trace_out)) + " sets!\n")
+    
+    pickle.dump((np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1))
 
 
+# main testing
 if __name__ == '__main__':
-    trace_in, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20)
-    print(trace_in)
+    trace_in_delta, trace_in_pc, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20, lim=50)
+    print(trace_in_delta)
     print("\n")
     print(trace_out)
 
-    print(len(trace_in))
+    print(len(trace_in_delta))
     print(len(trace_out))
