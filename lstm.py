@@ -86,9 +86,15 @@ loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
 # optimization
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
+# what if output delta is outside of top 50000?
+# this catches that case and make sure it makes the prediction false
+invalid_delta_encoding = tf.one_hot(tf.constant(n_classes-1), n_classes)
+y_is_valid = tf.not_equal(tf.argmax(y_final, 1), tf.argmax(invalid_delta_encoding, 0))
 
 correct_prediction = tf.equal(tf.argmax(prediction, 1), tf.argmax(y_final, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+correct_valid_prediction = tf.logical_and(y_is_valid, correct_prediction)
+
+accuracy = tf.reduce_mean(tf.cast(correct_valid_prediction, tf.float32))
 
 # top 10 evaluation to match milad
 #in_top_ten = tf.nn.in_top_k(prediction, batch_size, 1), y, 10)
