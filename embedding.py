@@ -14,13 +14,13 @@ def debug(message):
 # one hot encode a data set
 def one_hot_encode(data):
     encode = dict()
-    #decode = dict()
+    decode = dict()
 
     deltas = list(data)
     for i, d in enumerate(data):
         encode[d] = i
-        #decode[i] = d
-    return encode #, decode
+        decode[i] = d
+    return encode, decode
 
 # used because unknown encodings should
 # all go to the same index
@@ -65,9 +65,9 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     input_deltas, output_deltas = set(input_deltas), set(output_deltas)
 
     # one-hot encodings for input/output deltas and pc
-    input_enc = one_hot_encode(input_deltas)
-    output_enc = one_hot_encode(output_deltas)
-    pcs_enc = one_hot_encode(pcs)
+    input_enc, input_dec = one_hot_encode(input_deltas)
+    output_enc, output_dec = one_hot_encode(output_deltas)
+    pcs_enc, pc_dec = one_hot_encode(pcs)
 
     # clear up some memory
     del input_deltas
@@ -122,7 +122,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                 if limit != -1 and count == limit:
                     break
     debug("done!\n")
-    return trace_in_delta, trace_in_pc, trace_out
+    return trace_in_delta, trace_in_pc, trace_out, input_dec, output_dec
 
 
 def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
@@ -146,11 +146,11 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
-    trace_in_delta, trace_in_pc, trace_out = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    trace_in_delta, trace_in_pc, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
     # ungodly return statement, but what can you do....
-    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1
+    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1, input_dec, output_dec
 
 def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
     benchmark = filename[:filename.index(".")]

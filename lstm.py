@@ -20,7 +20,7 @@ batch_size = 128
 train_ratio = 0.70
 
 # get datasets
-trace_in_delta, trace_in_pc, trace_out, n_input_deltas, n_pcs, n_output_deltas  = get_embeddings(sys.argv[1], time_steps)
+trace_in_delta, trace_in_pc, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps)
 
 # number of inputs to LSTM
 n_input = n_input_deltas + n_pcs
@@ -88,7 +88,7 @@ prediction = tf.matmul(outputs[-1], out_weights) + out_bias
 top_k = min(10, n_classes)
 
 # loss function
-loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
     logits=prediction, labels=y_final))
 # optimization
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
@@ -112,12 +112,12 @@ accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten_valid, tf.float32))
 dim = test_y.reshape((-1, 1)).shape[0]
 accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Top predictions:\n")
 
+
 # initialize variables
 init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
     iterator = 0
-    #count = 0
 
     while iterator<800 and (iterator+1)*batch_size < len(train_y):
         x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
@@ -162,4 +162,8 @@ all_deltas_testing = set([X for X in test_x_delta])
 print("Input Deltas: ")
 print(all_deltas_testing)
 
-print("Make sure to exclude: " + str(n_classes-1))
+print("\nMake sure to exclude: " + str(n_classes-1))
+print("\nInput dec: ")
+print(str(input_dec))
+print("\nOutput dec: ")
+print(str(output_dec))
