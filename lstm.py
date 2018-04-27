@@ -34,6 +34,7 @@ assert n_classes <= 50001, "%d > 50001 output classes!" % n_classes
 # this is so ugly but what can you do
 train_x_delta, train_x_pc, train_y, test_x_delta, test_x_pc, test_y = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=train_ratio)
 
+
 # clear up space
 del trace_in_delta
 del trace_in_pc
@@ -78,12 +79,13 @@ inputs = tf.unstack(x, time_steps, 1);
 lstm_layer = rnn.BasicLSTMCell(num_units, forget_bias=1)
 outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float")
 
-pred_calc = tf.matmul(outputs[-1], out_weights) + out_bias
+prediction = tf.matmul(outputs[-1], out_weights) + out_bias
 
 # pass it through a print
 #tf.Print(prediction, [tf.nn.top_k(predidction, k=10)])
 #prediction = tf.Print(pred_calc, [tf.nn.top_k(pred_calc, k=10)])
-prediction = tf.Print(pred_calc, [pred_calc])
+
+top_k = min(10, n_classes)
 
 # loss function
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -102,9 +104,13 @@ correct_valid_prediction = tf.logical_and(y_is_valid, correct_prediction)
 accuracy = tf.reduce_mean(tf.cast(correct_valid_prediction, tf.float32))
 
 # testing accuracy -> tests top ten results
-in_top_ten = tf.nn.in_top_k(prediction, tf.argmax(y_final, 1), 10)
+in_top_ten = tf.nn.in_top_k(prediction, tf.argmax(y_final, 1), top_k)
 in_top_ten_valid = tf.logical_and(in_top_ten, y_is_valid)
 accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten_valid, tf.float32))
+
+#accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k, message="Top predictions: ")
+dim = test_y.reshape((-1, 1)).shape[0]
+accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Top predictions:\n")
 
 # initialize variables
 init = tf.global_variables_initializer()
@@ -150,4 +156,10 @@ with tf.Session() as sess:
     test_data_delta = test_x_delta.reshape((-1, time_steps, 1)) # -1 means make batch size the whole data set
     test_data_pc = test_x_pc.reshape((-1, time_steps, 1)) 
     test_label = test_y.reshape((-1, 1))
-    print("Testing Accuracy:", sess.run(accuracy_top_ten, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+    print("Testing Accuracy:", sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+
+all_deltas_testing = set([X for X in test_x_delta])
+print("Input Deltas: ")
+print(all_deltas_testing)
+
+print("Make sure to exclude: " + str(n_classes-1))
