@@ -78,7 +78,12 @@ inputs = tf.unstack(x, time_steps, 1);
 lstm_layer = rnn.BasicLSTMCell(num_units, forget_bias=1)
 outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float")
 
-prediction = tf.matmul(outputs[-1], out_weights) + out_bias
+pred_calc = tf.matmul(outputs[-1], out_weights) + out_bias
+
+# pass it through a print
+#tf.Print(prediction, [tf.nn.top_k(predidction, k=10)])
+#prediction = tf.Print(pred_calc, [tf.nn.top_k(pred_calc, k=10)])
+prediction = tf.Print(pred_calc, [pred_calc])
 
 # loss function
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -91,14 +96,15 @@ opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 invalid_delta_encoding = tf.one_hot(tf.constant(n_classes-1), n_classes)
 y_is_valid = tf.not_equal(tf.argmax(y_final, 1), tf.argmax(invalid_delta_encoding, 0))
 
+# training accuracy -> trains on next memory access
 correct_prediction = tf.equal(tf.argmax(prediction, 1), tf.argmax(y_final, 1))
 correct_valid_prediction = tf.logical_and(y_is_valid, correct_prediction)
-
 accuracy = tf.reduce_mean(tf.cast(correct_valid_prediction, tf.float32))
 
-# top 10 evaluation to match milad
-#in_top_ten = tf.nn.in_top_k(prediction, batch_size, 1), y, 10)
-#accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten, tf.float32))
+# testing accuracy -> tests top ten results
+in_top_ten = tf.nn.in_top_k(prediction, tf.argmax(y_final, 1), 10)
+in_top_ten_valid = tf.logical_and(in_top_ten, y_is_valid)
+accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten_valid, tf.float32))
 
 # initialize variables
 init = tf.global_variables_initializer()
@@ -144,4 +150,4 @@ with tf.Session() as sess:
     test_data_delta = test_x_delta.reshape((-1, time_steps, 1)) # -1 means make batch size the whole data set
     test_data_pc = test_x_pc.reshape((-1, time_steps, 1)) 
     test_label = test_y.reshape((-1, 1))
-    print("Testing Accuracy:", sess.run(accuracy, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+    print("Testing Accuracy:", sess.run(accuracy_top_ten, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
