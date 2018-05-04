@@ -14,10 +14,13 @@ num_units = 128
 learning_rate = 0.001
 
 # number of instructions per batch
-batch_size = 128
+batch_size = 32
 
 # how many training/testing sets
 train_ratio = 0.70
+
+# embedding size
+embedding_size = 128
 
 # get datasets
 trace_in_delta, trace_in_pc, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps)
@@ -50,19 +53,22 @@ None - means don't enforce batch_size, bc we use
        a different one for testing than for training 
 '''
 # input instruction placeholder
-x_delta = tf.placeholder("int32", [None, time_steps, 1]) # None means t
-x_pc = tf.placeholder("int32", [None, time_steps, 1]) # None means t
+x_delta = tf.placeholder("int32", [None, time_steps]) # None means t
+x_pc = tf.placeholder("int32", [None, time_steps]) # None means t
 
-x_delta_one_hot = tf.one_hot(x_delta, n_input_deltas, dtype=tf.int32)
-x_pc_one_hot = tf.one_hot(x_pc, n_pcs, dtype=tf.int32)
+# old one hot stuff
+#x_delta_one_hot = tf.one_hot(x_delta, n_input_deltas, dtype=tf.int32)
+#x_pc_one_hot = tf.one_hot(x_pc, n_pcs, dtype=tf.int32)
+#x_one_hot_concat = tf.concat([x_delta_one_hot, x_pc_one_hot], 3)
 
-x_one_hot_concat = tf.concat([x_delta_one_hot, x_pc_one_hot], 3)
+embed_matrix_delta = tf.Variable(tf.random_normal([n_input_deltas, embedding_size]))
+embed_matrix_pc = tf.Variable(tf.random_normal([n_pcs, embedding_size]))
 
-# remove extra dimension
-x_fix = tf.reshape(x_one_hot_concat, (-1, time_steps, n_input))
+embedded_delta = tf.nn.embedding_lookup(embed_matrix_delta, x_delta)
+embedded_pc = tf.nn.embedding_lookup(embed_matrix_pc, x_pc)
 
-# cast from int to float for static_rnn
-x = tf.cast(x_fix, tf.float32)
+
+embedded_concat = tf.concat((embedded_delta, embedded_pc), axis=2)
 
 # input label placeholder
 y = tf.placeholder("int32", [None, 1]) # takes it in as 1 dimensional
@@ -72,24 +78,18 @@ y_one_hot = tf.one_hot(y, n_classes)
 y_final = tf.reshape(y_one_hot, (-1, n_classes))
 
 # unstack inputs into sequence for static_rnn
-inputs = tf.unstack(x, time_steps, 1);
-
+inputs = tf.unstack(embedded_concat, time_steps, 1);
 
 ''' defining network '''
 lstm_layer = rnn.BasicLSTMCell(num_units, forget_bias=1)
-outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float")
+outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
 
 prediction = tf.matmul(outputs[-1], out_weights) + out_bias
-
-# pass it through a print
-#tf.Print(prediction, [tf.nn.top_k(predidction, k=10)])
-#prediction = tf.Print(pred_calc, [tf.nn.top_k(pred_calc, k=10)])
 
 top_k = min(10, n_classes)
 
 # loss function
-loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(
-    logits=prediction, labels=y_final))
+loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y_final))
 # optimization
 opt = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
@@ -108,7 +108,6 @@ in_top_ten = tf.nn.in_top_k(prediction, tf.argmax(y_final, 1), top_k)
 in_top_ten_valid = tf.logical_and(in_top_ten, y_is_valid)
 accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten_valid, tf.float32))
 
-#accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k, message="Top predictions: ")
 dim = test_y.reshape((-1, 1)).shape[0]
 accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Top predictions:\n")
 
@@ -122,12 +121,12 @@ with tf.Session() as sess:
     while iterator<800 and (iterator+1)*batch_size < len(train_y):
         x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
         batch_x_delta = train_x_delta[x_range[0]:x_range[1]]
-        batch_x_delta = batch_x_delta.reshape((batch_size * time_steps * 1))
-        batch_x_delta = batch_x_delta.reshape((batch_size, time_steps, 1))
+        batch_x_delta = batch_x_delta.reshape((batch_size * time_steps))
+        batch_x_delta = batch_x_delta.reshape((batch_size, time_steps))
 
         batch_x_pc = train_x_pc[x_range[0]:x_range[1]]
-        batch_x_pc = batch_x_pc.reshape((batch_size * time_steps * 1))
-        batch_x_pc = batch_x_pc.reshape((batch_size, time_steps, 1))
+        batch_x_pc = batch_x_pc.reshape((batch_size * time_steps))
+        batch_x_pc = batch_x_pc.reshape((batch_size, time_steps))
 
         batch_y = train_y[iterator*batch_size:(iterator+1)*batch_size]
         batch_y = batch_y.reshape((batch_size, 1))
@@ -143,18 +142,10 @@ with tf.Session() as sess:
             print("__________________")
         iterator += 1
 
-        ''' used to loop data for testing purposes
-        if (iterator+1)*batch_size >= len(train_y):
-            iterator = 1
-            count += 1
-
-        if count == 100:
-            break
-        '''
 
     # evaluate on second half of data set
-    test_data_delta = test_x_delta.reshape((-1, time_steps, 1)) # -1 means make batch size the whole data set
-    test_data_pc = test_x_pc.reshape((-1, time_steps, 1)) 
+    test_data_delta = test_x_delta.reshape((-1, time_steps)) # -1 means make batch size the whole data set
+    test_data_pc = test_x_pc.reshape((-1, time_steps)) 
     test_label = test_y.reshape((-1, 1))
     print("Testing Accuracy:", sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
 
