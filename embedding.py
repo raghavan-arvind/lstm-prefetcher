@@ -6,6 +6,8 @@ import re
 import pickle
 
 DEBUG = True
+INPUT_DELTA_CUTOFF = 500000 # try 500k
+
 def debug(message):
     if DEBUG:
         sys.stdout.write(message)
@@ -180,7 +182,7 @@ def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_rat
 def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     deltas, pcs = crawl_deltas(filename, limit=lim)
 
-    input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)
+    input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)[:INPUT_DELTA_CUTOFF]
 
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
