@@ -42,8 +42,9 @@ def crawl_deltas(filename, limit=-1):
     count = 0
     with open(filename, "r") as f:
         for line in f:
+            line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line.strip()):
-                addr, pc = [int(s) for s in line.strip().split()]
+                addr, pc = [int(s) for s in line.split()]
                 if prev != -1:
                     delta = addr - prev
                     if delta in deltas:
@@ -67,7 +68,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     # one-hot encodings for input/output deltas and pc
     input_enc, input_dec = one_hot_encode(input_deltas)
     output_enc, output_dec = one_hot_encode(output_deltas)
-    pcs_enc, pc_dec = one_hot_encode(pcs)
+    pcs_enc, pcs_dec = one_hot_encode(pcs)
 
     # clear up some memory
     del input_deltas
@@ -82,28 +83,65 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     # build the current trace
     cur_trace = []
     pattern = re.compile("\d+ \d+")
+    # zhan's traces
+    #pattern = re.compile("\d+ \d+ \d")
     prev = -1
-    count = 0
+    count = 1
 
+    delta_list1 = []
+    delta_list2 = []
+    pc_list1 = []
+    pc_list2 = []
     with open(filename, "r") as f:
         for line in f:
-            if pattern.match(line.strip()):
-                addr, pc = [int(s) for s in line.strip().split()]
+            line = re.sub('[\x00-\x1f]', '', line)
+            if pattern.match(line):
+                addr, pc  = [int(s) for s in line.split()]
                 if prev != -1:
                     delta = addr - prev
                     cur_trace.append((delta, pc))
                     
-                    # still using a sliding window because its the most
+                    # add to encodings
+                    delta_enc = enc(input_enc, delta)
+                    pc_enc = enc(pcs_enc, pc)
+
+                    ### list 1 ###
+                    delta_list1.append(delta_enc)
+                    pc_list1.append(pc_enc)
+                    
+                    # done with first list
+                    if count % time_steps == 0:
+                        trace_in_delta.extend(delta_list1)
+                        trace_in_pc.extend(pc_list1)
+                        delta_list1 = []
+                        pc_list1 = []
+
+                    # add output delta encoding
+                    if count % time_steps == 1 and count > 64:
+                        output_index = enc(output_enc, delta)
+                        trace_out.append(output_index)
+
+                    ### list 2 ###
+                    # start list2 after 32 instructions
+                    if count > time_steps/2:
+                        delta_list2.append(delta_enc)
+                        pc_list2.append(pc_enc)
+                        
+                        # done with second list
+                        if count % time_steps == time_steps/2:
+                            trace_in_delta.extend(delta_list2)
+                            trace_in_pc.extend(pc_list2)
+                            delta_list2 = []
+                            pc_list2 = []
+
+                        # add output delta encoding
+                        if count % time_steps == time_steps/2+1 and count > time_steps/2 + 1:
+                            output_index = enc(output_enc, delta)
+                            trace_out.append(output_index)
+                    
+                    '''# still using a sliding window because its the most
                     # efficient way to get sets of time_steps accesses
                     if len(cur_trace) == time_steps+1:
-                        # no preprocessing anymore, invalid inputs map to
-                        # the same encoding
-                        '''
-                        # check if all but the last are valid
-                        input_valid = all(c[2] for c in cur_trace[:-1])
-                        # check if last is valid
-                        output_valid = cur_trace[time_steps][0] in output_enc
-                        '''
 
                         for step in cur_trace[:-1]:
                             delta_index = enc(input_enc, step[0])
@@ -116,7 +154,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
 
                         trace_out.append(output_index)
 
-                        del cur_trace[0]
+                        del cur_trace[0] '''
                     count += 1
                 prev = addr
                 if limit != -1 and count == limit:
@@ -143,10 +181,12 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     deltas, pcs = crawl_deltas(filename, limit=lim)
 
     input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)
+
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
     trace_in_delta, trace_in_pc, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
     # ungodly return statement, but what can you do....
