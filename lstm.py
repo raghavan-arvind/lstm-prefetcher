@@ -3,6 +3,8 @@ import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from embedding import get_embeddings, split_training
 
+def mean(x):
+    return sum(x) * 1.0 / len(x)
 
 # number of instructions per prediction
 time_steps = 64
@@ -109,7 +111,8 @@ in_top_ten_valid = tf.logical_and(in_top_ten, y_is_valid)
 accuracy_top_ten = tf.reduce_mean(tf.cast(in_top_ten_valid, tf.float32))
 
 dim = test_y.reshape((-1, 1)).shape[0]
-accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Top predictions:\n")
+accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Storing predictions for batch:\n")
+
 
 
 # initialize variables
@@ -143,18 +146,32 @@ with tf.Session() as sess:
         iterator += 1
 
 
-    # evaluate on second half of data set
-    test_data_delta = test_x_delta.reshape((-1, time_steps)) # -1 means make batch size the whole data set
-    test_data_pc = test_x_pc.reshape((-1, time_steps)) 
-    test_label = test_y.reshape((-1, 1))
-    print("Testing Accuracy:", sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+    # evaluate on training data set
+    iterator = 0
+    accuracies = []
+    while (iterator+1)*batch_size < len(test_y):
+        x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
+        batch_x_delta = test_x_delta[x_range[0]:x_range[1]]
+        test_data_delta = batch_x_delta.reshape((batch_size * time_steps))
+        test_data_delta = batch_x_delta.reshape((batch_size, time_steps))
 
-all_deltas_testing = set([X for X in test_x_delta])
-print("Input Deltas: ")
+        batch_x_pc = test_x_pc[x_range[0]:x_range[1]]
+        test_data_pc = batch_x_pc.reshape((batch_size * time_steps))
+        test_data_pc = batch_x_pc.reshape((batch_size, time_steps))
+
+        batch_y = test_y[iterator*batch_size:(iterator+1)*batch_size]
+        test_label = batch_y.reshape((batch_size, 1))
+        accuracies.append(sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+        iterator += 1
+    print("\nFinal Testing Accuracy: " + str(mean(accuracies)))
+
+all_deltas_testing = set([input_dec[X] for X in test_x_delta if X != len(input_dec)])
+print("\nInput Deltas: ")
 print(all_deltas_testing)
 
-print("\nMake sure to exclude: " + str(n_classes-1))
-print("\nInput dec: ")
-print(str(input_dec))
+#print("\nInput dec: ")
+#print(str(input_dec))
 print("\nOutput dec: ")
 print(str(output_dec))
+
+print("\nMake sure to exclude: " + str(n_classes-1))
