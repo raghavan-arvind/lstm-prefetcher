@@ -16,7 +16,7 @@ num_units = 128
 learning_rate = 0.001
 
 # number of instructions per batch
-batch_size = 32
+batch_size = 1
 
 # how many training/testing sets
 train_ratio = 0.70
@@ -83,7 +83,7 @@ y_final = tf.reshape(y_one_hot, (-1, n_classes))
 inputs = tf.unstack(embedded_concat, time_steps, 1);
 
 ''' defining network '''
-lstm_layer = rnn.BasicLSTMCell(num_units, forget_bias=1)
+lstm_layer = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units)
 outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
 
 prediction = tf.matmul(outputs[-1], out_weights) + out_bias
@@ -114,6 +114,10 @@ dim = test_y.reshape((-1, 1)).shape[0]
 accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Storing predictions for batch:\n")
 
 
+print("\nOutput dec: ")
+print(str(output_dec))
+
+del output_dec
 
 # initialize variables
 init = tf.global_variables_initializer()
@@ -168,10 +172,5 @@ with tf.Session() as sess:
 all_deltas_testing = set([input_dec[X] for X in test_x_delta if X != len(input_dec)])
 print("\nInput Deltas: ")
 print(all_deltas_testing)
-
-#print("\nInput dec: ")
-#print(str(input_dec))
-print("\nOutput dec: ")
-print(str(output_dec))
 
 print("\nMake sure to exclude: " + str(n_classes-1))

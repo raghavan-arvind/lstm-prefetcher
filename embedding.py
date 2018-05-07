@@ -1,5 +1,3 @@
-import tensorflow as tf
-from tensorflow.contrib import rnn
 import numpy as np
 import sys,os
 import re
@@ -38,7 +36,7 @@ def crawl_deltas(filename, limit=-1):
     debug("Crawling " + filename + " for delta frequency... ")
     deltas = dict()
     pcs = set()
-    pattern = re.compile("\d+ \d+")
+    pattern = re.compile("\d+ \d+ \d")
     prev = -1
 
     count = 0
@@ -46,7 +44,7 @@ def crawl_deltas(filename, limit=-1):
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line.strip()):
-                addr, pc = [int(s) for s in line.split()]
+                addr, pc, _ = [int(s) for s in line.split()]
                 if prev != -1:
                     delta = addr - prev
                     if delta in deltas:
@@ -84,7 +82,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
 
     # build the current trace
     cur_trace = []
-    pattern = re.compile("\d+ \d+")
+    pattern = re.compile("\d+ \d+ \d")
     # zhan's traces
     #pattern = re.compile("\d+ \d+ \d")
     prev = -1
@@ -98,7 +96,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line):
-                addr, pc  = [int(s) for s in line.split()]
+                addr, pc, _  = [int(s) for s in line.split()]
                 if prev != -1:
                     delta = addr - prev
                     cur_trace.append((delta, pc))
@@ -169,6 +167,8 @@ def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_rat
     cutoff_y = int(train_ratio*len(trace_out))
     cutoff_x = cutoff_y * time_steps
 
+    print("test split starts at "+str(cutoff_x))
+
     train_x_delta = trace_in_delta[:cutoff_x]
     train_x_pc = trace_in_pc[:cutoff_x]
     train_y = trace_out[:cutoff_y]
@@ -201,7 +201,9 @@ def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
 
 # main testing
 if __name__ == '__main__':
-    dump_embedding(sys.argv[1], 20)
+    trace_in_delta, trace_in_pc, trace_out, _, _, _, _, _ = get_embeddings(sys.argv[1], 64)
+    split_training(trace_in_delta, trace_in_pc, trace_out, 64)
+    #dump_embedding(sys.argv[1], 20)
     '''trace_in_delta, trace_in_pc, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20, lim=50)
     print(trace_in_delta)
     print("\n")
