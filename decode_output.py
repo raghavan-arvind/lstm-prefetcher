@@ -115,10 +115,11 @@ if __name__ == '__main__':
     assert len(testing_addr) == len(correct_deltas)
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
-    precision = eval_precision(predictions, output_dec, excl_delta, correct_deltas)
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
+    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
+    precision = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     assert(output_dec == output_dec_read)
     print("testing accuracy: " + str(accuracy))
     print("recall: " + str(recall))
-    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     print("coverage: " + str(coverage))
+    print("accuracy: " + str(precision))
