@@ -36,7 +36,7 @@ def crawl_deltas(filename, limit=-1):
     debug("Crawling " + filename + " for delta frequency... ")
     deltas = dict()
     pcs = set()
-    pattern = re.compile("\d+ \d+ \d")
+    pattern = re.compile("\d+ \d+\s*\d*")
     prev = -1
 
     count = 0
@@ -44,7 +44,7 @@ def crawl_deltas(filename, limit=-1):
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line.strip()):
-                addr, pc, _ = [int(s) for s in line.split()]
+                addr, pc = [int(s) for s in line.split()][:2]
                 if prev != -1:
                     delta = addr - prev
                     if delta in deltas:
@@ -79,12 +79,10 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     trace_in_delta = []
     trace_in_pc = []
     trace_out = []
+    trace_in_addr = []
 
     # build the current trace
-    cur_trace = []
-    pattern = re.compile("\d+ \d+ \d")
-    # zhan's traces
-    #pattern = re.compile("\d+ \d+ \d")
+    pattern = re.compile("\d+ \d+\s*\d*")
     prev = -1
     count = 1
 
@@ -92,14 +90,15 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     delta_list2 = []
     pc_list1 = []
     pc_list2 = []
+    addr_list1 = []
+    addr_list2 = []
     with open(filename, "r") as f:
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line):
-                addr, pc, _  = [int(s) for s in line.split()]
+                addr, pc = [int(s) for s in line.split()][:2]
                 if prev != -1:
                     delta = addr - prev
-                    cur_trace.append((delta, pc))
                     
                     # add to encodings
                     delta_enc = enc(input_enc, delta)
@@ -108,13 +107,16 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                     ### list 1 ###
                     delta_list1.append(delta_enc)
                     pc_list1.append(pc_enc)
+                    addr_list1.append(addr)
                     
                     # done with first list
                     if count % time_steps == 0:
                         trace_in_delta.extend(delta_list1)
                         trace_in_pc.extend(pc_list1)
+                        trace_in_addr.extend(addr_list2)
                         delta_list1 = []
                         pc_list1 = []
+                        addr_list1 = []
 
                     # add output delta encoding
                     if count % time_steps == 1 and count > 64:
@@ -126,41 +128,28 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                     if count > time_steps/2:
                         delta_list2.append(delta_enc)
                         pc_list2.append(pc_enc)
+                        addr_list2.append(addr)
                         
                         # done with second list
                         if count % time_steps == time_steps/2:
                             trace_in_delta.extend(delta_list2)
                             trace_in_pc.extend(pc_list2)
+                            trace_in_addr.extend(addr_list2)
                             delta_list2 = []
                             pc_list2 = []
+                            addr_list2 = []
 
                         # add output delta encoding
                         if count % time_steps == time_steps/2+1 and count > time_steps/2 + 1:
                             output_index = enc(output_enc, delta)
                             trace_out.append(output_index)
                     
-                    '''# still using a sliding window because its the most
-                    # efficient way to get sets of time_steps accesses
-                    if len(cur_trace) == time_steps+1:
-
-                        for step in cur_trace[:-1]:
-                            delta_index = enc(input_enc, step[0])
-                            pc_index = enc(pcs_enc, step[1])
-                            trace_in_delta.append(delta_index)
-                            trace_in_pc.append(pc_index)
-                        
-                        output_step = cur_trace[time_steps]
-                        output_index = enc(output_enc, output_step[0])
-
-                        trace_out.append(output_index)
-
-                        del cur_trace[0] '''
                     count += 1
                 prev = addr
                 if limit != -1 and count == limit:
                     break
     debug("done!\n")
-    return trace_in_delta, trace_in_pc, trace_out, input_dec, output_dec
+    return trace_in_delta, trace_in_pc, trace_in_addr, trace_out, input_dec, output_dec
 
 
 def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
@@ -187,7 +176,7 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
-    trace_in_delta, trace_in_pc, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    trace_in_delta, trace_in_pc, trace_in_addr, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
 
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
@@ -203,11 +192,3 @@ def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
 if __name__ == '__main__':
     trace_in_delta, trace_in_pc, trace_out, _, _, _, _, _ = get_embeddings(sys.argv[1], 64)
     split_training(trace_in_delta, trace_in_pc, trace_out, 64)
-    #dump_embedding(sys.argv[1], 20)
-    '''trace_in_delta, trace_in_pc, trace_out, num_inputs, num_pcs, num_output = get_embeddings(sys.argv[1], 20, lim=50)
-    print(trace_in_delta)
-    print("\n")
-    print(trace_out)
-
-    print(len(trace_in_delta))
-    print(len(trace_out))'''
