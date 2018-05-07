@@ -1,4 +1,5 @@
 import sys, os
+import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 from embedding import get_embeddings, split_training
@@ -56,13 +57,9 @@ None - means don't enforce batch_size, bc we use
        a different one for testing than for training 
 '''
 # input instruction placeholder
-x_delta = tf.placeholder("int32", [None, time_steps]) # None means t
-x_pc = tf.placeholder("int32", [None, time_steps]) # None means t
+x_delta = tf.placeholder("int32", [batch_size, time_steps]) # None means t
+x_pc = tf.placeholder("int32", [batch_size, time_steps]) # None means t
 
-# old one hot stuff
-#x_delta_one_hot = tf.one_hot(x_delta, n_input_deltas, dtype=tf.int32)
-#x_pc_one_hot = tf.one_hot(x_pc, n_pcs, dtype=tf.int32)
-#x_one_hot_concat = tf.concat([x_delta_one_hot, x_pc_one_hot], 3)
 
 embed_matrix_delta = tf.Variable(tf.random_normal([n_input_deltas, embedding_size]))
 embed_matrix_pc = tf.Variable(tf.random_normal([n_pcs, embedding_size]))
@@ -74,7 +71,7 @@ embedded_pc = tf.nn.embedding_lookup(embed_matrix_pc, x_pc)
 embedded_concat = tf.concat((embedded_delta, embedded_pc), axis=2)
 
 # input label placeholder
-y = tf.placeholder("int32", [None, 1]) # takes it in as 1 dimensional
+y = tf.placeholder("int32", [batch_size, 1]) # takes it in as 1 dimensional
 y_one_hot = tf.one_hot(y, n_classes)
 
 # fix dimensions
@@ -125,8 +122,9 @@ init = tf.global_variables_initializer()
 with tf.Session() as sess:
     sess.run(init)
     iterator = 0
+    num_epochs = 1
 
-    while iterator<800 and (iterator+1)*batch_size < len(train_y):
+    while (iterator+1)*batch_size < len(train_y):
         x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
         batch_x_delta = train_x_delta[x_range[0]:x_range[1]]
         batch_x_delta = batch_x_delta.reshape((batch_size * time_steps))

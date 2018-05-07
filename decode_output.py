@@ -59,7 +59,7 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
             if prediction != excl_delta:
                 predicted_deltas.add(output_dec[prediction])
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
-    return 1.0 * len(intersect)/len(output_deltas)
+    return len(intersect)/len(output_deltas)
 
 degree = 2
 window_size = 1000
@@ -112,6 +112,8 @@ if __name__ == '__main__':
     testing_addr = trace_in_addr[cutoff:]
 
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
+    print(len(testing_addr))
+    print(len(correct_deltas))
     assert len(testing_addr) == len(correct_deltas)
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])

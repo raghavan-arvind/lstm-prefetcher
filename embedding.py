@@ -4,7 +4,7 @@ import re
 import pickle
 
 DEBUG = True
-INPUT_DELTA_CUTOFF = 500000 # try 500k
+INPUT_DELTA_CUTOFF = 50000 # try 50k
 
 def debug(message):
     if DEBUG:
