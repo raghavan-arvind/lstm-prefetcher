@@ -1,0 +1,105 @@
+from embedding import get_embeddings, split_training
+import sys,os,re,ast
+
+DEBUG = True
+def debug(message):
+    if DEBUG:
+        sys.stdout.write(message)
+        sys.stdout.flush()
+
+
+
+trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
+
+time_steps = 64
+
+final_acc_str = "Final Testing Accuracy: "
+input_delta_str = "Input Deltas:"
+output_dec_str = "Output dec:"
+excl_delta_str = "Make sure to exclude: "
+
+# reads the output file
+def read_output(filename):
+    debug("Reading "+ trace_dir + filename+".out"+ " for predictions ...\n")
+    
+    accuracy = 0.0
+    predictions = []
+    input_deltas = set()
+    excl_delta = 0
+
+    reading_input_deltas = False
+    reading_output_dec = False
+    
+    # crawl output
+    output_file = open(trace_dir+filename+".out", "r")
+    for line in output_file:
+        # read predictions
+        if line.startswith("[["):
+            for step in line.split("]["):
+                predictions.append([int(s) for s in re.sub("\\[|\\]", "", step).split()])
+        elif line.startswith(final_acc_str):
+            accuracy = float(line[len(final_acc_str):])
+        elif line.startswith(excl_delta_str):
+            excl_delta = int(line[len(excl_delta_str):])
+        elif reading_output_dec:
+            output_dec_read = ast.literal_eval(line)
+        elif reading_input_deltas:
+            input_deltas = ast.literal_eval(line)
+
+        reading_input_deltas = line.startswith(input_delta_str)
+        reading_output_dec = line.startswith(output_dec_str)
+
+    return accuracy, input_deltas, excl_delta, predictions, output_dec_read
+
+def eval_recall(predictions, output_dec, excl_delta, output_deltas):
+    debug("Evaluating recall ...\n")
+    predicted_deltas = set()
+    for top_k in predictions:
+        for prediction in top_k:
+            if prediction != excl_delta:
+                predicted_deltas.add(output_dec[prediction])
+    intersect = [x for x in predicted_deltas if x in set(output_deltas)]
+    return 1.0 * len(intersect)/len(output_deltas)
+
+def eval_precision(predictions, output_dec, excl_delta, correct_deltas):
+    debug("Evaluating precision ...\n")
+    num_correct = 0
+    #print(len(predictions))
+    #print(len(correct_deltas))
+    for i in range(0, len(predictions)):
+        top_k = predictions[i]
+        if correct_deltas[i] in top_k:
+            num_correct += 1
+
+    return num_correct/len(correct_deltas)
+
+degree = 2
+window_size = 1000
+
+def eval_coverage(predictions, output_dec, excl_delta, correct_deltas):
+    debug("Evaluating coverage ...\n")
+    correct_positions = set()
+    for i in range(0, len(predictions)-window_size):
+        top_k = predictions[i][0:degree]
+        window = correct_deltas[i:i+window_size]
+        for pred in top_k:
+            if pred != excl_delta:
+                pred = output_dec[pred]
+                if pred in window:
+                    correct_positions.add(list(window).index(pred)+i)
+    return len(correct_positions)/(len(correct_deltas)-window_size)
+
+if __name__ == '__main__':
+    filename = trace_dir + sys.argv[1] + "_small.txt"
+    trace_in_delta, trace_in_pc, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
+    _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
+
+    accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
+    precision = eval_precision(predictions, output_dec, excl_delta, correct_deltas)
+    recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
+    assert(output_dec == output_dec_read)
+    print("testing accuracy: " + str(accuracy))
+    #print(precision)
+    print("recall: " + str(recall))
+    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas)
+    print("coverage: " + str(coverage))
