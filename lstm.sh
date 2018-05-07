@@ -20,7 +20,8 @@ for (( i=0; i<$ELEMENTS; i++))
 do
     benchmark=${ARRAY[${i}]}
     trace_file="$input_dir/$benchmark"".txt"
-    train_file="$input_dir/$benchmark""_small.txt"
+    train_file="$trace_file"
+    #train_file="$input_dir/$benchmark""_small.txt"
     script_file="$input_dir/$benchmark"".sh"
     stats_file="$input_dir/$benchmark"".stats"
     condor_file="$input_dir/$benchmark"".condor"
@@ -30,7 +31,6 @@ do
         echo "Training on" $benchmark "from" $trace_file
         
         # create train file
-        cat $trace_file > $train_file
         #head -$limit $trace_file > $train_file
 
         # create executable script
