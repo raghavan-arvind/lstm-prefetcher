@@ -61,26 +61,35 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
     return 1.0 * len(intersect)/len(output_deltas)
 
-def eval_precision(predictions, output_dec, excl_delta, correct_deltas):
-    debug("Evaluating precision ...\n")
-    num_correct = 0
-    #print(len(predictions))
-    #print(len(correct_deltas))
-    for i in range(0, len(predictions)):
-        top_k = predictions[i]
-        if correct_deltas[i] in top_k:
-            num_correct += 1
-
-    return num_correct/len(correct_deltas)
-
 degree = 2
 window_size = 1000
+
+def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
+    debug("Evaluating accuracy ...\n")
+    num_correct = 0
+    for i in range(0, len(predictions)):
+        top_k = predictions[i][:degree]
+        base_addr = testing_addr[i] - correct_deltas[i]
+
+        # for sanity
+        if i > 0:
+            assert base_addr == testing_addr[i-1]
+        predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
+        counts = [False] * degree
+        for cur_addr in window:
+            for ind, pred_addr in enumerate(predicted_addrs):
+                if pred_addr == cur_addr:
+                    counts[ind] = True
+            if sum(counts) == degree:
+                break
+        num_correct += sum(counts)
+    return num_correct / (degree * len(predictions))
+
 
 def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating coverage ...\n")
     covered = [False] * len(testing_addr)
 
-    active_predictions = []
     for i in range(0, len(predictions)-window_size):
         top_k = predictions[i][0:degree]
         window = testing_addr[i:i+window_size]
@@ -98,6 +107,7 @@ if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + "_small.txt"
     trace_in_delta, trace_in_pc, trace_in_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
     assert len(trace_in_delta) == len(trace_in_addr)
+
     cutoff = int(len(trace_in_addr) * 0.70) * time_steps
     testing_addr = trace_in_addr[testing_addr:]
 
@@ -109,7 +119,6 @@ if __name__ == '__main__':
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     assert(output_dec == output_dec_read)
     print("testing accuracy: " + str(accuracy))
-    #print(precision)
     print("recall: " + str(recall))
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     print("coverage: " + str(coverage))

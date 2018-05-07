@@ -78,8 +78,8 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     # inputs and outputs to return
     trace_in_delta = []
     trace_in_pc = []
-    trace_out = []
     trace_in_addr = []
+    trace_out = []
 
     # build the current trace
     pattern = re.compile("\d+ \d+\s*\d*")
@@ -113,7 +113,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                     if count % time_steps == 0:
                         trace_in_delta.extend(delta_list1)
                         trace_in_pc.extend(pc_list1)
-                        trace_in_addr.extend(addr_list2)
+                        trace_in_addr.extend(addr_list1)
                         delta_list1 = []
                         pc_list1 = []
                         addr_list1 = []
