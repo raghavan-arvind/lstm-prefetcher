@@ -181,7 +181,7 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
     # ungodly return statement, but what can you do....
-    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1, input_dec, output_dec
+    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_in_addr), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1, input_dec, output_dec
 
 def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
     benchmark = filename[:filename.index(".")]

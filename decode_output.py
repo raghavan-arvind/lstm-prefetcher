@@ -76,23 +76,37 @@ def eval_precision(predictions, output_dec, excl_delta, correct_deltas):
 degree = 2
 window_size = 1000
 
-def eval_coverage(predictions, output_dec, excl_delta, correct_deltas):
+def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating coverage ...\n")
     correct_positions = set()
+    covered = [False] * len(testing_addr)
+
+    active_predictions = []
     for i in range(0, len(predictions)-window_size):
         top_k = predictions[i][0:degree]
         window = correct_deltas[i:i+window_size]
-        for pred in top_k:
-            if pred != excl_delta:
-                pred = output_dec[pred]
-                if pred in window:
-                    correct_positions.add(list(window).index(pred)+i)
-    return len(correct_positions)/(len(correct_deltas)-window_size)
+
+        base_addr = testing_addr[i] - correct_deltas[i]
+        predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
+
+        cur_addr = base_addr
+        for ind, delta_in_window in enumerate(window):
+            cur_addr += delta_in_window
+
+            if cur_addr in predicted_addrs:
+                covered[i+ind] = True
+            
+    return sum(covered) / len(covered)
 
 if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + "_small.txt"
-    trace_in_delta, trace_in_pc, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
+    trace_in_delta, trace_in_pc, trace_in_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
+    assert len(trace_in_delta) == len(trace_in_addr)
+    cutoff = int(len(trace_in_addr) * 0.70) * time_steps
+    testing_addr = trace_in_addr[testing_addr:]
+
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
+    assert len(testing_addr) == len(correct_deltas)
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
     precision = eval_precision(predictions, output_dec, excl_delta, correct_deltas)
@@ -101,5 +115,5 @@ if __name__ == '__main__':
     print("testing accuracy: " + str(accuracy))
     #print(precision)
     print("recall: " + str(recall))
-    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas)
+    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     print("coverage: " + str(coverage))
