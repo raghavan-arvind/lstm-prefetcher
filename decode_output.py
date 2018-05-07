@@ -95,8 +95,12 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
         window = testing_addr[i*32 -1:i*32-1+window_size]
 
         base_addr = testing_addr[i*32-2]
-        cor_del = output_dec[correct_deltas[i]] if correct_deltas[i] != excl_delta else 0
+        cor_del = output_dec[correct_deltas[i]] if correct_deltas[i] != excl_delta else -123456789
         if correct_deltas[i] != excl_delta:
+            print(base_addr)
+            print(cor_del)
+            print(testing_addr[i*32-1])
+            print(testing_addr[i*32-3:i*32-1+3])
             assert base_addr + cor_del == testing_addr[i*32-1]
 
         predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
