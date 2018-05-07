@@ -112,8 +112,6 @@ if __name__ == '__main__':
     testing_addr = trace_in_addr[cutoff:]
 
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
-    print(len(testing_addr))
-    print(len(correct_deltas))
     assert len(testing_addr) == len(correct_deltas)
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
