@@ -26,8 +26,8 @@ train_ratio = 0.70
 embedding_size = 128
 
 # get datasets
-trace_in_delta, trace_in_pc, trace_in_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps)
-del trace_in_addr
+trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps)
+del trace_out_addr
 
 # number of inputs to LSTM
 n_input = n_input_deltas + n_pcs

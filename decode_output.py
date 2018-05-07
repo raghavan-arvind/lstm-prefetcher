@@ -105,10 +105,10 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
 
 if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + ".txt"
-    trace_in_delta, trace_in_pc, trace_in_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
-    assert len(trace_in_delta) == len(trace_in_addr)
+    trace_in_delta, trace_in_pc, trace_out, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
+    assert len(trace_out) == len(trace_out_addr)
 
-    cutoff = int(len(trace_out) * 0.70) * time_steps
+    cutoff = int(len(trace_out) * 0.70)
     testing_addr = trace_in_addr[cutoff:]
 
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)

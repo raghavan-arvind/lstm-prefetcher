@@ -78,7 +78,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     # inputs and outputs to return
     trace_in_delta = []
     trace_in_pc = []
-    trace_in_addr = []
+    trace_out_addr = []
     trace_out = []
 
     # build the current trace
@@ -90,8 +90,6 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     delta_list2 = []
     pc_list1 = []
     pc_list2 = []
-    addr_list1 = []
-    addr_list2 = []
     with open(filename, "r") as f:
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
@@ -107,56 +105,50 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                     ### list 1 ###
                     delta_list1.append(delta_enc)
                     pc_list1.append(pc_enc)
-                    addr_list1.append(addr)
                     
                     # done with first list
                     if count % time_steps == 0:
                         trace_in_delta.extend(delta_list1)
                         trace_in_pc.extend(pc_list1)
-                        trace_in_addr.extend(addr_list1)
                         delta_list1 = []
                         pc_list1 = []
-                        addr_list1 = []
 
                     # add output delta encoding
                     if count % time_steps == 1 and count > 64:
                         output_index = enc(output_enc, delta)
                         trace_out.append(output_index)
+                        trace_out_addr.append(addr)
 
                     ### list 2 ###
                     # start list2 after 32 instructions
                     if count > time_steps/2:
                         delta_list2.append(delta_enc)
                         pc_list2.append(pc_enc)
-                        addr_list2.append(addr)
                         
                         # done with second list
                         if count % time_steps == time_steps/2:
                             trace_in_delta.extend(delta_list2)
                             trace_in_pc.extend(pc_list2)
-                            trace_in_addr.extend(addr_list2)
                             delta_list2 = []
                             pc_list2 = []
-                            addr_list2 = []
 
                         # add output delta encoding
                         if count % time_steps == time_steps/2+1 and count > time_steps/2 + 1:
                             output_index = enc(output_enc, delta)
                             trace_out.append(output_index)
+                            trace_out_addr.append(addr)
                     
                     count += 1
                 prev = addr
                 if limit != -1 and count == limit:
                     break
     debug("done!\n")
-    return trace_in_delta, trace_in_pc, trace_in_addr, trace_out, input_dec, output_dec
+    return trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec
 
 
 def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
     cutoff_y = int(train_ratio*len(trace_out))
     cutoff_x = cutoff_y * time_steps
-
-    print("test split starts at "+str(cutoff_x))
 
     train_x_delta = trace_in_delta[:cutoff_x]
     train_x_pc = trace_in_pc[:cutoff_x]
@@ -176,12 +168,12 @@ def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
-    trace_in_delta, trace_in_pc, trace_in_addr, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
 
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
     # ungodly return statement, but what can you do....
-    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_in_addr), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1, input_dec, output_dec
+    return np.array(trace_in_delta), np.array(trace_in_pc), np.array(trace_out_addr), np.array(trace_out), len(input_deltas)+1, len(pcs)+1, len(output_deltas)+1, input_dec, output_dec
 
 def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
     benchmark = filename[:filename.index(".")]
@@ -190,5 +182,5 @@ def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
 
 # main testing
 if __name__ == '__main__':
-    trace_in_delta, trace_in_pc, trace_out, _, _, _, _, _ = get_embeddings(sys.argv[1], 64)
+    trace_in_delta, trace_in_pc, trace_out_addr, trace_out, _, _, _, _, _ = get_embeddings(sys.argv[1], 64)
     split_training(trace_in_delta, trace_in_pc, trace_out, 64)
