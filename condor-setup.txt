@@ -1,0 +1,15 @@
+Basically, the lstm-sctipt.sh creates .condor files for each benchmark,
+as well as an executable script that runs the lstm, and redirects its
+output to Zhan's scratch directory.
+
+**If you want to run it, you need to be ssh'd into streetpizza
+
+The .condor files in here (lstm.condor, lstm-gpu.condor) are basic
+templates used by the script.
+
+GPU stuff:
+    -need tensorflow-gpu==1.5.1 (bc cluster GPUs use CUDA 8.0)
+        * pip3 install tensorflow-gpu==1.5.1
+    -need cudNN 6.0 AND 5.0 (bc cluster GPUs don't have)
+        * I've copied these to cancer; to set it up for your account,
+          you just have to copy them to your home directory
