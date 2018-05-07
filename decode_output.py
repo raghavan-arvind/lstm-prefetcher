@@ -78,21 +78,17 @@ window_size = 1000
 
 def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating coverage ...\n")
-    correct_positions = set()
     covered = [False] * len(testing_addr)
 
     active_predictions = []
     for i in range(0, len(predictions)-window_size):
         top_k = predictions[i][0:degree]
-        window = correct_deltas[i:i+window_size]
+        window = testing_addr[i:i+window_size]
 
         base_addr = testing_addr[i] - correct_deltas[i]
         predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
 
-        cur_addr = base_addr
-        for ind, delta_in_window in enumerate(window):
-            cur_addr += delta_in_window
-
+        for ind, cur_addr in enumerate(window):
             if cur_addr in predicted_addrs:
                 covered[i+ind] = True
             
