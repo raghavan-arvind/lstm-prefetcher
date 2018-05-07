@@ -109,7 +109,7 @@ if __name__ == '__main__':
     assert len(trace_out) == len(trace_out_addr)
 
     cutoff = int(len(trace_out) * 0.70)
-    testing_addr = trace_in_addr[cutoff:]
+    testing_addr = trace_out_addr[cutoff:]
 
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
     assert len(testing_addr) == len(correct_deltas)
