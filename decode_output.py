@@ -104,7 +104,7 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     return sum(covered) / len(covered)
 
 if __name__ == '__main__':
-    filename = trace_dir + sys.argv[1] + "_small.txt"
+    filename = trace_dir + sys.argv[1] + ".txt"
     trace_in_delta, trace_in_pc, trace_in_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
     assert len(trace_in_delta) == len(trace_in_addr)
 
