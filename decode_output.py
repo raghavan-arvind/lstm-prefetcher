@@ -70,6 +70,7 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
     for i in range(0, len(predictions)):
         top_k = predictions[i][:degree]
         base_addr = testing_addr[i] - correct_deltas[i]
+        window = testing_addr[i:i+window_size]
 
         # for sanity
         if i > 0:
