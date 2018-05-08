@@ -70,11 +70,9 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
     num_correct = 0
     for i in range(0, len(predictions)):
         top_k = predictions[i][:degree]
-        base_addr = testing_addr[i] - correct_deltas[i]
+        base_addr = testing_addr[i*time_steps] - correct_deltas[i]
+        window = testing_addr[i*time_steps:i*time_steps+window_size]
 
-        # for sanity
-        if i > 0:
-            assert base_addr == testing_addr[i-1]
         predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
         counts = [False] * degree
         for cur_addr in window:
@@ -137,10 +135,9 @@ if __name__ == '__main__':
 
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-    precision = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-
+    our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
     print("testing accuracy: " + str(accuracy))
     print("recall: " + str(recall))
     print("coverage: " + str(coverage))
-    print("accuracy: " + str(precision))
+    #print("accuracy: " + str(our_accuracy))
