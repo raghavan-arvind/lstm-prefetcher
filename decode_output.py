@@ -68,21 +68,29 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
     debug("Evaluating accuracy ...\n")
 
     num_correct = 0
+    total = 0
     for i in range(0, len(predictions)):
-        top_k = predictions[i][:degree]
-        base_addr = testing_addr[i*time_steps] - correct_deltas[i]
-        window = testing_addr[i*time_steps:i*time_steps+window_size]
+        if correct_deltas[i] != excl_delta:
+            top_k = predictions[i][0:degree]
+            window = testing_addr[i:i+window_size]
 
-        predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
-        counts = [False] * degree
-        for cur_addr in window:
-            for ind, pred_addr in enumerate(predicted_addrs):
-                if pred_addr == cur_addr:
-                    counts[ind] = True
-            if sum(counts) == degree:
-                break
-        num_correct += sum(counts)
-    return num_correct / (degree * len(predictions))
+
+            base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
+            predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
+
+            # sanity test
+            if i > 0:
+                err = "base address is not lined up, base addr = %s, base addr calc'd = %s" % (testing_addr[i-1], base_addr)
+                assert testing_addr[i-1] == base_addr, err
+
+            counts = [False] * degree
+            for cur_addr in window:
+                for ind, pred in enumerate(predicted_addrs):
+                    if pred == cur_addr:
+                        counts[ind] = True
+            total += degree
+            num_correct += sum(counts)
+    return num_correct / total
 
 
 def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
@@ -95,8 +103,14 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
             top_k = predictions[i][0:degree]
             window = testing_addr[i:i+window_size]
 
-            base_addr = testing_addr[i] - correct_deltas[i]
+
+            base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
             predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
+
+            # sanity test
+            if i > 0:
+                err = "base address is not lined up, base addr = %s, base addr calc'd = %s" % (testing_addr[i-1], base_addr)
+                assert testing_addr[i-1] == base_addr, err
 
             for ind, cur_addr in enumerate(window):
                 if cur_addr in predicted_addrs:
