@@ -103,7 +103,6 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
             top_k = predictions[i][0:degree]
             window = testing_addr[i:i+window_size]
 
-
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
             predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
 
@@ -140,16 +139,16 @@ if __name__ == '__main__':
     assert output_dec == output_dec_read, "Output decoders don't match!"
 
     # make sure first delta lines up
-    if correct_deltas[0] != excl_delta:
+    if correct_deltas[1] != excl_delta:
         err = "First 5 addresses %s\nFirst 5 deltas %s" % (testing_addr[:5], [output_dec[x] for x in correct_deltas[:5] if x != excl_delta])
-        assert testing_addr[1] == testing_addr[0] + output_dec[correct_deltas[0]], err
+        assert testing_addr[1] == testing_addr[0] + output_dec[correct_deltas[1]], err
     else:
         debug("Warning: can't check alignment of deltas w addresses")
 
 
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-    our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
+    #our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
     print("testing accuracy: " + str(accuracy))
     print("recall: " + str(recall))
