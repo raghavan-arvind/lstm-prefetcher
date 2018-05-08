@@ -66,6 +66,7 @@ window_size = 1000
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating accuracy ...\n")
+
     num_correct = 0
     for i in range(0, len(predictions)):
         top_k = predictions[i][:degree]
@@ -90,35 +91,55 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     debug("Evaluating coverage ...\n")
     covered = [False] * len(testing_addr)
 
+    # TODO: check if predictions are lined up
     for i in range(0, len(predictions)-window_size):
-        top_k = predictions[i][0:degree]
-        window = testing_addr[i:i+window_size]
+        if correct_deltas[i] != excl_delta:
+            top_k = predictions[i][0:degree]
+            window = testing_addr[i:i+window_size]
 
-        base_addr = testing_addr[i] - correct_deltas[i]
-        predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
+            base_addr = testing_addr[i] - correct_deltas[i]
+            predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
 
-        for ind, cur_addr in enumerate(window):
-            if cur_addr in predicted_addrs:
-                covered[i+ind] = True
+            for ind, cur_addr in enumerate(window):
+                if cur_addr in predicted_addrs:
+                    covered[i+ind] = True
             
     return sum(covered) / len(covered)
 
 if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + ".txt"
     trace_in_delta, trace_in_pc, trace_out_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
-    assert len(trace_out) == len(trace_out_addr)
 
+    # trace out addr should have a 1-to-1 correlation without the number of output deltas
+    err = "Deltas in output trace: %d\nAddresses in output trace: %d" % (len(trace_out), len(trace_out_addr))
+    assert len(trace_out) == len(trace_out_addr), err
+
+    # cut off the training set
     cutoff = int(len(trace_out) * 0.70)
     testing_addr = trace_out_addr[cutoff:]
 
     _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
-    assert len(testing_addr) == len(correct_deltas)
+
+    # makes sure 1-to-1 correlation still exists
+    err = "Deltas in ouput testing trace: %d\nAddresses in output testing trace: %d" % (len(correct_deltas), len(testing_addr))
+    assert len(testing_addr) == len(correct_deltas), err
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
+    assert output_dec == output_dec_read, "Output decoders don't match!"
+
+    # make sure first delta lines up
+    if correct_deltas[0] != excl_delta:
+        err = "First 5 addresses %s\nFirst 5 deltas %s" % (testing_addr[:5], [output_dec[x] for x in correct_deltas[:5] if x != excl_delta])
+        assert testing_addr[1] == testing_addr[0] + output_dec[correct_deltas[0]], err
+    else:
+        debug("Warning: can't check alignment of deltas w addresses")
+
+
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     precision = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-    assert(output_dec == output_dec_read)
+
+
     print("testing accuracy: " + str(accuracy))
     print("recall: " + str(recall))
     print("coverage: " + str(coverage))
