@@ -10,6 +10,7 @@ def debug(message):
 
 
 trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
+#trace_dir = ""
 
 time_steps = 64
 
@@ -33,6 +34,10 @@ def read_output(filename):
     # crawl output
     output_file = open(trace_dir+filename+".out", "r")
     for line in output_file:
+        # strip tensorflow nonsense
+        if "CPU" in line and "2018" in line:
+            line = line[:line.rfind("}")+1]
+
         # read predictions
         if line.startswith("[["):
             for step in line.split("]["):
@@ -87,6 +92,8 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
                 for ind, pred in enumerate(predicted_addrs):
                     if pred == cur_addr:
                         counts[ind] = True
+                if sum(counts) == degree:
+                    break
             total += degree
             num_correct += sum(counts)
     return num_correct / total
@@ -105,9 +112,11 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
             predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
 
+            assert len(predicted_addrs) <= degree, "something wrong..."
+
             # sanity test
             if i > 0:
-                err = "base address is not lined up, base addr = %s, base addr calc'd = %s" % (testing_addr[i-1], base_addr)
+                err = "base address is not lined up, base addr = %s, base addr calc'd = %s\n%s\n%s" % (testing_addr[i-1], base_addr, testing_addr[i-1:i+2], correct_deltas[i-1:i+2])
                 assert testing_addr[i-1] == base_addr, err
 
             for ind, cur_addr in enumerate(window):
@@ -139,10 +148,10 @@ if __name__ == '__main__':
 
     # make sure first delta lines up
     if correct_deltas[1] != excl_delta:
-        err = "First 5 addresses %s\nFirst 5 deltas %s" % (testing_addr[:5], [output_dec[x] for x in correct_deltas[:5] if x != excl_delta])
+        err = "First 5 addresses %s\nFirst 5 deltas %s" % (trace_out_addr[:5], [output_dec[x] for x in trace_out[:5] if x != excl_delta])
         assert testing_addr[1] == testing_addr[0] + output_dec[correct_deltas[1]], err
     else:
-        debug("Warning: can't check alignment of deltas w addresses")
+        debug("Warning: can't check alignment of deltas w/ addresses!")
 
 
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)

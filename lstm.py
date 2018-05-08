@@ -17,7 +17,7 @@ num_units = 128
 learning_rate = 0.001
 
 # number of instructions per batch
-batch_size = 1
+batch_size = 64
 
 # how many training/testing sets
 train_ratio = 0.70
@@ -51,15 +51,9 @@ del trace_out
 out_weights = tf.Variable(tf.random_normal([num_units, n_classes]))
 out_bias = tf.Variable(tf.random_normal([n_classes]))
 
-''' 
-defining placeholders 
-None - means don't enforce batch_size, bc we use
-       a different one for testing than for training 
-'''
 # input instruction placeholder
-x_delta = tf.placeholder("int32", [batch_size, time_steps]) # None means t
-x_pc = tf.placeholder("int32", [batch_size, time_steps]) # None means t
-
+x_delta = tf.placeholder("int32", [batch_size, time_steps]) 
+x_pc = tf.placeholder("int32", [batch_size, time_steps]) 
 
 embed_matrix_delta = tf.Variable(tf.random_normal([n_input_deltas, embedding_size]))
 embed_matrix_pc = tf.Variable(tf.random_normal([n_pcs, embedding_size]))
@@ -114,8 +108,6 @@ accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).i
 
 print("\nOutput dec: ")
 print(str(output_dec))
-
-del output_dec
 
 # initialize variables
 init = tf.global_variables_initializer()
