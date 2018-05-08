@@ -16,7 +16,7 @@ def one_hot_encode(data):
     encode = dict()
     decode = dict()
 
-    deltas = list(data)
+    deltas = list(set(data))
     for i, d in enumerate(data):
         encode[d] = i
         decode[i] = d
@@ -112,7 +112,10 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                         
                         # add correct deltas
                         trace_out_addr.append(addr)
-                        trace_out.append(delta_enc)
+                        trace_out.append(enc(output_enc, delta))
+
+                        #print("this addr %s, prev %s, delta %s, delta enc %s" % (addr, prev, delta, delta_enc))
+                        #sys.exit(1)
                     count += 1
                 prev = addr
                 if limit != -1 and count == limit:
