@@ -67,7 +67,7 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     return len(intersect)/len(output_deltas)
 
 degree = 2
-window_size = 1000
+window_size = 100
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating accuracy ...\n")
@@ -76,11 +76,14 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
     total = 0
     for i in range(0, len(predictions)):
         if correct_deltas[i] != excl_delta:
-            top_k = predictions[i][0:degree]
+            top_k = [output_dec[pred] for pred in predictions[i] if pred != excl_delta]
+            if 0 in top_k:
+                top_k.remove(0)
+            top_k = top_k[0:degree]
             window = testing_addr[i:i+window_size]
 
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
-            predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
+            predicted_addrs = set([base_addr+offset for offset in top_k])
 
             # sanity test
             if i > 0:
@@ -106,11 +109,14 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     # TODO: check if predictions are lined up
     for i in range(0, len(predictions)-window_size):
         if correct_deltas[i] != excl_delta:
-            top_k = predictions[i][0:degree]
+            top_k = [output_dec[pred] for pred in predictions[i] if pred != excl_delta]
+            if 0 in top_k:
+                top_k.remove(0)
+            top_k = top_k[0:degree]
             window = testing_addr[i:i+window_size]
 
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
-            predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
+            predicted_addrs = set([base_addr+offset for offset in top_k])
 
             assert len(predicted_addrs) <= degree, "something wrong..."
 
@@ -158,7 +164,8 @@ if __name__ == '__main__':
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
-    print("testing accuracy: " + str(accuracy))
+    print("precision: " + str(accuracy))
     print("recall: " + str(recall))
+    print("degree: " + str(degree))
     print("coverage: " + str(coverage))
     print("accuracy: " + str(our_accuracy))
