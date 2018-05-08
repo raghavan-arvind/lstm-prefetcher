@@ -96,13 +96,13 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                 if prev != -1:
                     delta = addr - prev
 
-                    # add to cumulative list
-                    delta_list.append(delta)
-                    pc_list.append(pc)
-
                     # add to encodings
                     delta_enc = enc(input_enc, delta)
                     pc_enc = enc(pcs_enc, pc)
+
+                    # add to cumulative list
+                    delta_list.append(delta_enc)
+                    pc_list.append(pc_enc)
 
                     # valid past window
                     if count > time_steps:
@@ -112,7 +112,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                         
                         # add correct deltas
                         trace_out_addr.append(addr)
-                        trace_out.append(delta)
+                        trace_out.append(delta_enc)
                     count += 1
                 prev = addr
                 if limit != -1 and count == limit:
