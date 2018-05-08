@@ -74,7 +74,6 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
             top_k = predictions[i][0:degree]
             window = testing_addr[i:i+window_size]
 
-
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
             predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
 
@@ -148,9 +147,9 @@ if __name__ == '__main__':
 
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-    #our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
+    our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
     print("testing accuracy: " + str(accuracy))
     print("recall: " + str(recall))
     print("coverage: " + str(coverage))
-    #print("accuracy: " + str(our_accuracy))
+    print("accuracy: " + str(our_accuracy))
