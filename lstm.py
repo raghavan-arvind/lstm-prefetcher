@@ -17,7 +17,7 @@ num_units = 128
 learning_rate = 0.001
 
 # number of instructions per batch
-batch_size = 1
+batch_size = 64
 
 # how many training/testing sets
 train_ratio = 0.70
