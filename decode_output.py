@@ -144,8 +144,6 @@ if __name__ == '__main__':
     assert len(testing_addr) == len(correct_deltas), err
 
     accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
-    print(output_dec)
-    print(output_dec_read)
     assert output_dec == output_dec_read, "Output decoders don't match!"
 
     # make sure first delta lines up
