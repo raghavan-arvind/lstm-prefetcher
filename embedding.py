@@ -157,4 +157,7 @@ def dump_embedding(filename, time_steps, train_ratio=0.70, lim=-1):
 # main testing
 if __name__ == '__main__':
     trace_in_delta, trace_in_pc, trace_out_addr, trace_out, _, _, _, _, _ = get_embeddings(sys.argv[1], 64)
+    assert(len(trace_in_delta)==len(trace_in_pc))
+    assert(len(trace_out_addr)==len(trace_out))
+    assert(len(trace_out_addr)==len(trace_in_delta)/64)
     split_training(trace_in_delta, trace_in_pc, trace_out, 64)
