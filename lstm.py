@@ -14,7 +14,7 @@ def debug(mess):
         sys.stdout.flush()
 
 # max number of instructions we can handle
-MAX_INS = 4000 # 1 mill
+MAX_INS = 10000
 
 # number of instructions per prediction
 time_steps = 64
