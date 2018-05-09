@@ -7,10 +7,13 @@ def debug(message):
         sys.stdout.write(message)
         sys.stdout.flush()
 
+MAX_INS = 500000
 
+def mean(x):
+    return sum(x) / len(x)
 
-trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
-#trace_dir = ""
+#trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
+trace_dir = ""
 
 time_steps = 64
 
@@ -18,6 +21,8 @@ final_acc_str = "Final Testing Accuracy: "
 input_delta_str = "Input Deltas:"
 output_dec_str = "Output dec:"
 excl_delta_str = "Make sure to exclude: "
+max_ins_str = "MAX_INS: "
+batch_size_str = "Batch Size: "
 
 # reads the output file
 def read_output(filename):
@@ -27,6 +32,8 @@ def read_output(filename):
     predictions = []
     input_deltas = set()
     excl_delta = 0
+    max_ins = 0
+    batch_size = 0
 
     reading_input_deltas = False
     reading_output_dec = False
@@ -46,6 +53,10 @@ def read_output(filename):
             accuracy = float(line[len(final_acc_str):])
         elif line.startswith(excl_delta_str):
             excl_delta = int(line[len(excl_delta_str):])
+        elif line.startswith(max_ins_str):
+            max_ins = int(line[len(max_ins_str):])
+        elif line.startswith(batch_size_str):
+            batch_size = int(line[len(batch_size_str):])
         elif reading_output_dec:
             output_dec_read = ast.literal_eval(line)
         elif reading_input_deltas:
@@ -54,7 +65,7 @@ def read_output(filename):
         reading_input_deltas = line.startswith(input_delta_str)
         reading_output_dec = line.startswith(output_dec_str)
 
-    return accuracy, input_deltas, excl_delta, predictions, output_dec_read
+    return accuracy, input_deltas, excl_delta, predictions, output_dec_read, max_ins, batch_size
 
 def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     debug("Evaluating recall ...\n")
@@ -66,7 +77,7 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
     return len(intersect)/len(output_deltas)
 
-degree = 4
+degree = 1
 window_size = 100
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
@@ -146,26 +157,70 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     return sum(covered) / (len(repeats)-sum(repeats))'''
 
 if __name__ == '__main__':
-    filename = trace_dir + sys.argv[1] + "_small.txt"
-    trace_in_delta, trace_in_pc, trace_out_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
+    filename = trace_dir + sys.argv[1] + ".txt"
 
-    # trace out addr should have a 1-to-1 correlation without the number of output deltas
-    err = "Deltas in output trace: %d\nAddresses in output trace: %d" % (len(trace_out), len(trace_out_addr))
-    assert len(trace_out) == len(trace_out_addr), err
+    accuracy, input_deltas, excl_delta, predictions, output_dec_read, MAX_INS, batch_size = read_output(sys.argv[1])
+    assert MAX_INS != 0, "max ins not found in lstm output!"
+    assert batch_size != 0, "batch size not found in lstm output!"
 
-    # cut off the training set
-    cutoff = int(len(trace_out) * 0.70)
-    testing_addr = trace_out_addr[cutoff:]
+    epoch = 0
+    correct_deltas = []
+    testing_addr = []
+    trace_out = []
+    trace_out_addr = []
+    output_dec = None
 
-    _, _, _, _, _, correct_deltas = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps)
 
-    # makes sure 1-to-1 correlation still exists
-    err = "Deltas in ouput testing trace: %d\nAddresses in output testing trace: %d" % (len(correct_deltas), len(testing_addr))
-    assert len(testing_addr) == len(correct_deltas), err
+    recalls = []
+    coverages = []
+    our_acc = []
 
-    accuracy, input_deltas, excl_delta, predictions, output_dec_read = read_output(sys.argv[1])
+    prediction_start = 0
+
+    while True:
+        trace_in_delta, trace_in_pc, trace_out_addr_epoch, trace_out_epoch, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps, start=epoch*MAX_INS, lim=MAX_INS)
+
+        if len(trace_out_epoch) == 0:
+            break
+
+        # trace out addr should have a 1-to-1 correlation without the number of output deltas
+        err = "Deltas in output trace: %d\nAddresses in output trace: %d" % (len(trace_out_epoch), len(trace_out_addr_epoch))
+        assert len(trace_out_epoch) == len(trace_out_addr_epoch), err
+
+        # cut off the training set
+        cutoff = int(len(trace_out_epoch) * 0.70)
+        testing_addr_epoch = trace_out_addr_epoch[cutoff:]
+
+        batch_size_cutoff = len(testing_addr_epoch) % batch_size
+        testing_addr_epoch = testing_addr_epoch[:-1 * batch_size_cutoff]
+
+        _, _, _, _, _, correct_deltas_epoch = split_training(trace_in_delta, trace_in_pc, trace_out_epoch, time_steps, mod=batch_size)
+
+        # makes sure 1-to-1 correlation still exists
+        err = "Deltas in ouput testing trace: %d\nAddresses in output testing trace: %d" % (len(correct_deltas_epoch), len(testing_addr_epoch))
+        assert len(testing_addr_epoch) == len(correct_deltas_epoch), err
+
+        length = len(correct_deltas_epoch)
+        coverage = eval_coverage(predictions[prediction_start:prediction_start+length], output_dec, excl_delta, correct_deltas_epoch, testing_addr_epoch)
+        our_accuracy = eval_accuracy(predictions[prediction_start:prediction_start+length], output_dec, excl_delta, correct_deltas_epoch, testing_addr_epoch)
+
+        coverages.append(coverage)
+        our_acc.append(accuracy)
+
+        prediction_start += length
+
+        correct_deltas.extend(correct_deltas_epoch)
+        testing_addr.extend(testing_addr_epoch)
+        trace_out.extend(trace_out_epoch)
+        trace_out_addr.extend(trace_out_addr_epoch)
+
+        epoch += 1
+
     assert output_dec == output_dec_read, "Output decoders don't match!"
 
+    #predictions = predictions[:len(correct_deltas)]
+    assert len(predictions) == len(correct_deltas), "# predictions = %d, # correct deltas = %d" % (len(predictions), len(correct_deltas))
+    
     # make sure first delta lines up
     if correct_deltas[1] != excl_delta:
         err = "First 5 addresses %s\nFirst 5 deltas %s" % (trace_out_addr[:5], [output_dec[x] for x in trace_out[:5] if x != excl_delta])
@@ -175,11 +230,11 @@ if __name__ == '__main__':
 
 
     recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
-    coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
-    our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
+    #kcoverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
+    #our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
     print("precision: " + str(accuracy))
     print("recall: " + str(recall))
     print("degree: " + str(degree))
-    print("coverage: " + str(coverage))
-    print("accuracy: " + str(our_accuracy))
+    print("coverage: " + str(mean(coverages)))
+    print("accuracy: " + str(mean(our_acc)))
