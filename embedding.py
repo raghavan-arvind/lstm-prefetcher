@@ -61,7 +61,7 @@ def crawl_deltas(filename, limit=-1):
 
 # given list of input/output deltas, crawls the trace and creates
 # a valid trace set
-def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1):
+def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1, start=0):
     debug("Creating trace... ")
     input_deltas, output_deltas = set(input_deltas), set(output_deltas)
 
@@ -85,6 +85,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     pattern = re.compile("\d+ \d+\s*\d*")
     prev = -1
     count = 0
+    line_counter = 0
 
     delta_list = []
     pc_list = []
@@ -92,6 +93,10 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line):
+                if line_counter < start:
+                    line_counter += 1
+                    continue
+
                 addr, pc = [int(s) for s in line.split()][:2]
                 if prev != -1:
                     delta = addr - prev
@@ -124,6 +129,9 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     return trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec
 
 def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
+    if len(trace_out) == 0:
+        return np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), np.array([])
+
     cutoff_y = int(train_ratio*len(trace_out))
     cutoff_x = cutoff_y * time_steps
 
@@ -137,15 +145,15 @@ def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_rat
 
     return np.array(train_x_delta), np.array(train_x_pc), np.array(train_y), np.array(test_x_delta), np.array(test_x_pc), np.array(test_y)
 
-def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1):
-    deltas, pcs = crawl_deltas(filename, limit=lim)
+def get_embeddings(filename, time_steps, train_ratio=0.70, lim=-1, start=0):
+    deltas, pcs = crawl_deltas(filename, limit=-1)
 
     input_deltas = sorted([x for x in deltas.keys() if deltas[x] >= 10], key=lambda x: deltas[x], reverse=True)[:INPUT_DELTA_CUTOFF]
 
     size = min(50000, len(deltas.keys()))
     output_deltas = sorted(deltas.keys(), key=lambda x: deltas[x], reverse=True)[:size]
 
-    trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim)
+    trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec = crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=lim, start=start)
 
     debug("Created " + str(len(trace_out)) + " sets!\n")
 
