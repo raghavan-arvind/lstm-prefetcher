@@ -128,7 +128,7 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
     debug("done!\n")
     return trace_in_delta, trace_in_pc, trace_out_addr, trace_out, input_dec, output_dec
 
-def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70):
+def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=0.70, mod=-1):
     if len(trace_out) == 0:
         return np.array([]), np.array([]), np.array([]), np.array([]), np.array([]), np.array([])
 
@@ -142,6 +142,14 @@ def split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_rat
     test_x_delta = trace_in_delta[cutoff_x:]
     test_x_pc = trace_in_pc[cutoff_x:]
     test_y = trace_out[cutoff_y:]
+
+    if mod != -1:
+        removing = len(test_y) % mod
+        test_y = test_y[:-1 * removing]
+        test_x_delta = test_x_delta[:-1*removing*time_steps]
+        test_x_pc = test_x_pc[:-1*removing*time_steps]
+
+        assert len(test_x_delta) % len(test_y) == 0
 
     return np.array(train_x_delta), np.array(train_x_pc), np.array(train_y), np.array(test_x_delta), np.array(test_x_pc), np.array(test_y)
 

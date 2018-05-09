@@ -14,7 +14,7 @@ def debug(mess):
         sys.stdout.flush()
 
 # max number of instructions we can handle
-MAX_INS = 500000 # 1 mill
+MAX_INS = 4000 # 1 mill
 
 # number of instructions per prediction
 time_steps = 64
@@ -35,7 +35,7 @@ train_ratio = 0.70
 embedding_size = 128
 
 # get datasets
-trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=10000, start=0)
+trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=MAX_INS, start=0)
 del trace_out_addr
 
 # number of inputs to LSTM
@@ -115,6 +115,8 @@ dim = test_y.reshape((-1, 1)).shape[0]
 accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).indices], summarize=top_k*dim, message="Storing predictions for batch:\n")
 
 
+print("\nMAX_INS: %d" % (MAX_INS))
+print("\nBatch Size: %d" % (batch_size))
 print("\nOutput dec: ")
 print(str(output_dec))
 
@@ -174,7 +176,7 @@ with tf.Session() as sess:
         epoch += 1
 
         all_deltas_testing = all_deltas_testing.union(set([input_dec[X] for X in test_x_delta if X != len(input_dec)]))
-        trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=10000, start=epoch*MAX_INS)
+        trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=MAX_INS, start=epoch*MAX_INS)
         train_x_delta, train_x_pc, train_y, test_x_delta, test_x_pc, test_y = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=train_ratio)
 
 print("\nFinal Testing Accuracy: " + str(mean(testing_accuracies)))
