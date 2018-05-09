@@ -44,7 +44,8 @@ def crawl_deltas(filename, limit=-1):
         for line in f:
             line = re.sub('[\x00-\x1f]', '', line)
             if pattern.match(line.strip()):
-                addr, pc = [int(s) for s in line.split()][:2]
+                pc, addr = [int(s) for s in line.split()][:2]
+                assert addr > pc
                 if prev != -1:
                     delta = addr - prev
                     if delta in deltas:
@@ -97,7 +98,8 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                     line_counter += 1
                     continue
 
-                addr, pc = [int(s) for s in line.split()][:2]
+                pc, addr = [int(s) for s in line.split()][:2]
+                assert addr > pc
                 if prev != -1:
                     delta = addr - prev
 
