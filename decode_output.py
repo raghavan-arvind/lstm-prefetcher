@@ -66,7 +66,7 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
     return len(intersect)/len(output_deltas)
 
-degree = 2
+degree = 1
 window_size = 100
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
@@ -106,6 +106,16 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     debug("Evaluating coverage ...\n")
     covered = [False] * len(testing_addr)
 
+    repeats = [False] * len(testing_addr)
+    for i in range(0, len(testing_addr)-window_size):
+        if repeats[i]:
+            continue
+        cur_addr = testing_addr[i]
+        window = testing_addr[i:i+window_size]
+        for j, other_addr in enumerate(window):
+            if cur_addr == other_addr:
+                repeats[i+j] = True
+
     # TODO: check if predictions are lined up
     for i in range(0, len(predictions)-window_size):
         if correct_deltas[i] != excl_delta:
@@ -128,8 +138,12 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
             for ind, cur_addr in enumerate(window):
                 if cur_addr in predicted_addrs:
                     covered[i+ind] = True
-            
-    return sum(covered) / len(covered)
+    
+    covered = [a and not b for a, b in zip(covered, repeats)]
+    print(sum(repeats))
+    print(len(repeats))
+    print(sum(covered))
+    return sum(covered) / (len(repeats)-sum(repeats))
 
 if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + "_small.txt"
