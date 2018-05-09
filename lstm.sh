@@ -14,14 +14,13 @@ ELEMENTS=${#ARRAY[@]}
 input_dir="/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace"
 output_dir="/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace"
 
-limit=5000000
+limit=1000000
 
 for (( i=0; i<$ELEMENTS; i++))
 do
     benchmark=${ARRAY[${i}]}
     trace_file="$input_dir/$benchmark"".txt"
-    train_file="$trace_file"
-    #train_file="$input_dir/$benchmark""_small.txt"
+    train_file="$input_dir/$benchmark""_small.txt"
     script_file="$input_dir/$benchmark"".sh"
     stats_file="$input_dir/$benchmark"".stats"
     condor_file="$input_dir/$benchmark"".condor"
@@ -31,7 +30,7 @@ do
         echo "Training on" $benchmark "from" $trace_file
         
         # create train file
-        #head -$limit $trace_file > $train_file
+        head -$limit $trace_file > $train_file
 
         # create executable script
         echo "#!/bin/bash" > $script_file
@@ -39,7 +38,7 @@ do
         echo "export LD_LIBRARY_PATH=\"/opt/cuda-8.0/lib64:\$LD_LIBRARY_PATH\"" >> $script_file
         echo "export LD_LIBRARY_PATH=\"/u/matthewp/cuda/lib64:\$LD_LIBRARY_PATH\"" >> $script_file
         echo "python3 /u/matthewp/lstm.py $train_file > $output_file 2>&1" >> $script_file
-        echo "python3 /u/matthewp/decode_output.py $benchmark > $stats_file" >> $script_file
+        echo "python3 /u/matthewp/decode_output.py $benchmark &> $stats_file" >> $script_file
         chmod +x $script_file
 
         # create condor file

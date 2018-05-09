@@ -66,8 +66,8 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
     return len(intersect)/len(output_deltas)
 
-degree = 2
-window_size = 1000
+degree = 4
+window_size = 100
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating accuracy ...\n")
@@ -76,11 +76,14 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
     total = 0
     for i in range(0, len(predictions)):
         if correct_deltas[i] != excl_delta:
-            top_k = predictions[i][0:degree]
+            top_k = [output_dec[pred] for pred in predictions[i] if pred != excl_delta]
+            if 0 in top_k:
+                top_k.remove(0)
+            top_k = top_k[0:degree]
             window = testing_addr[i:i+window_size]
 
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
-            predicted_addrs = [base_addr+output_dec[offset] for offset in top_k if offset != excl_delta]
+            predicted_addrs = set([base_addr+offset for offset in top_k])
 
             # sanity test
             if i > 0:
@@ -103,14 +106,27 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
     debug("Evaluating coverage ...\n")
     covered = [False] * len(testing_addr)
 
+    '''repeats = [False] * len(testing_addr)
+    for i in range(0, len(testing_addr)-window_size):
+        if repeats[i]:
+            continue
+        cur_addr = testing_addr[i]
+        window = testing_addr[i:i+window_size]
+        for j, other_addr in enumerate(window):
+            if cur_addr == other_addr:
+                repeats[i+j] = True'''
+
     # TODO: check if predictions are lined up
     for i in range(0, len(predictions)-window_size):
         if correct_deltas[i] != excl_delta:
-            top_k = predictions[i][0:degree]
+            top_k = [output_dec[pred] for pred in predictions[i] if pred != excl_delta]
+            if 0 in top_k:
+                top_k.remove(0)
+            top_k = top_k[0:degree]
             window = testing_addr[i:i+window_size]
 
             base_addr = testing_addr[i] - output_dec[correct_deltas[i]]
-            predicted_addrs = set([base_addr+output_dec[offset] for offset in top_k if offset != excl_delta])
+            predicted_addrs = set([base_addr+offset for offset in top_k])
 
             assert len(predicted_addrs) <= degree, "something wrong..."
 
@@ -122,11 +138,15 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
             for ind, cur_addr in enumerate(window):
                 if cur_addr in predicted_addrs:
                     covered[i+ind] = True
-            
-    return sum(covered) / len(covered)
+    return sum(covered)/len(covered)
+    '''covered = [a and not b for a, b in zip(covered, repeats)]
+    print(sum(repeats))
+    print(len(repeats))
+    print(sum(covered))
+    return sum(covered) / (len(repeats)-sum(repeats))'''
 
 if __name__ == '__main__':
-    filename = trace_dir + sys.argv[1] + ".txt"
+    filename = trace_dir + sys.argv[1] + "_small.txt"
     trace_in_delta, trace_in_pc, trace_out_addr, trace_out, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps)
 
     # trace out addr should have a 1-to-1 correlation without the number of output deltas
@@ -158,7 +178,8 @@ if __name__ == '__main__':
     coverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
-    print("testing accuracy: " + str(accuracy))
+    print("precision: " + str(accuracy))
     print("recall: " + str(recall))
+    print("degree: " + str(degree))
     print("coverage: " + str(coverage))
     print("accuracy: " + str(our_accuracy))
