@@ -17,7 +17,7 @@ def debug(mess):
 MAX_INS = 5000
 
 # retrains
-RETRAINS = 5
+RETRAINS = 2
 
 # number of instructions per prediction
 time_steps = 64
@@ -84,7 +84,7 @@ y_final = tf.reshape(y_one_hot, (-1, n_classes))
 #inputs = tf.unstack(embedded_concat, time_steps, 1);
 
 ''' defining network '''
-lstm_layer = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units)
+lstm_layer = tf.contrib.rnn.BasicLSTMCell(num_units)
 outputs, _ = tf.nn.dynamic_rnn(lstm_layer, embedded_concat, dtype="float32")
 #outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
 

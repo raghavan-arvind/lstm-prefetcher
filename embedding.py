@@ -47,6 +47,9 @@ def crawl_deltas(filename, limit=-1):
                 addr, pc = [int(s) for s in line.split()][:2]
                 if len(str(addr)) < len(str(pc)):
                     addr, pc = pc, addr
+
+                assert addr > pc, "address smaller than pc!"
+
                 if prev != -1:
                     delta = addr - prev
                     if delta in deltas:
@@ -102,6 +105,9 @@ def crawl_trace(filename, input_deltas, output_deltas, pcs, time_steps, limit=-1
                 addr, pc = [int(s) for s in line.split()][:2]
                 if len(str(addr)) < len(str(pc)):
                     addr, pc = pc, addr
+
+                assert addr > pc, "addr small than pc!"
+
                 if prev != -1:
                     delta = addr - prev
 
