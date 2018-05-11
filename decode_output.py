@@ -23,6 +23,7 @@ output_dec_str = "Output dec:"
 excl_delta_str = "Make sure to exclude: "
 max_ins_str = "MAX_INS: "
 batch_size_str = "Batch Size: "
+retrains_str = "Retrains: "
 
 # reads the output file
 def read_output(filename):
@@ -34,6 +35,7 @@ def read_output(filename):
     excl_delta = 0
     max_ins = 0
     batch_size = 0
+    retrains = 0
 
     reading_input_deltas = False
     reading_output_dec = False
@@ -57,6 +59,8 @@ def read_output(filename):
             max_ins = int(line[len(max_ins_str):])
         elif line.startswith(batch_size_str):
             batch_size = int(line[len(batch_size_str):])
+        elif line.startswith(retrains_str):
+            retrains = int(line[len(retrains_str):])
         elif reading_output_dec:
             output_dec_read = ast.literal_eval(line)
         elif reading_input_deltas:
@@ -65,7 +69,7 @@ def read_output(filename):
         reading_input_deltas = line.startswith(input_delta_str)
         reading_output_dec = line.startswith(output_dec_str)
 
-    return accuracy, input_deltas, excl_delta, predictions, output_dec_read, max_ins, batch_size
+    return accuracy, input_deltas, excl_delta, predictions, output_dec_read, max_ins, batch_size, retrains
 
 def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     debug("Evaluating recall ...\n")
@@ -110,6 +114,11 @@ def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_a
                     break
             total += degree
             num_correct += sum(counts)
+    if total == 0:
+        print(predictions)
+        print(correct_deltas)
+        print(testing_addr)
+
     return num_correct / total
 
 
@@ -159,11 +168,13 @@ def eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_a
 if __name__ == '__main__':
     filename = trace_dir + sys.argv[1] + ".txt"
 
-    accuracy, input_deltas, excl_delta, predictions, output_dec_read, MAX_INS, batch_size = read_output(sys.argv[1])
+    accuracy, input_deltas, excl_delta, predictions, output_dec_read, MAX_INS, batch_size, RETRAINS = read_output(sys.argv[1])
     assert MAX_INS != 0, "max ins not found in lstm output!"
     assert batch_size != 0, "batch size not found in lstm output!"
+    assert RETRAINS != 0, "retrains not found in lstm output!"
 
     epoch = 0
+    retrains = 0
     correct_deltas = []
     testing_addr = []
     trace_out = []
@@ -181,7 +192,14 @@ if __name__ == '__main__':
         trace_in_delta, trace_in_pc, trace_out_addr_epoch, trace_out_epoch, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps, start=epoch*MAX_INS, lim=MAX_INS)
 
         if len(trace_out_epoch) == 0:
-            break
+            retrains += 1
+            epoch = 0
+            prediction_start = 0
+
+            if not retrains < RETRAINS:
+                break
+
+        trace_in_delta, trace_in_pc, trace_out_addr_epoch, trace_out_epoch, _, _, n_output_deltas, _, output_dec = get_embeddings(filename, time_steps, start=epoch*MAX_INS, lim=MAX_INS)
 
         # trace out addr should have a 1-to-1 correlation without the number of output deltas
         err = "Deltas in output trace: %d\nAddresses in output trace: %d" % (len(trace_out_epoch), len(trace_out_addr_epoch))

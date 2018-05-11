@@ -14,7 +14,10 @@ def debug(mess):
         sys.stdout.flush()
 
 # max number of instructions we can handle
-MAX_INS = 10000
+MAX_INS = 5000
+
+# retrains
+RETRAINS = 5
 
 # number of instructions per prediction
 time_steps = 64
@@ -117,12 +120,14 @@ accuracy_testing = tf.Print(accuracy_top_ten, [tf.nn.top_k(prediction,k=top_k).i
 
 print("\nMAX_INS: %d" % (MAX_INS))
 print("\nBatch Size: %d" % (batch_size))
+print("\nRetrains: %d" % (RETRAINS))
 print("\nOutput dec: ")
 print(str(output_dec))
 
 testing_accuracies = []
 all_deltas_testing = set()
 epoch = 0
+retrains = 0
 
 # initialize variables
 init = tf.global_variables_initializer()
@@ -130,7 +135,7 @@ with tf.Session() as sess:
     sess.run(init)
     iterator = 0
 
-    while len(train_y) > 0:
+    while retrains < RETRAINS:
         while (iterator+1)*batch_size < len(train_y):
             x_range = (iterator*batch_size*time_steps, (iterator+1)*batch_size*time_steps)
             batch_x_delta = train_x_delta[x_range[0]:x_range[1]]
@@ -172,12 +177,24 @@ with tf.Session() as sess:
             testing_accuracies.append(sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
             iterator += 1
         
-        debug("Finished epoch %d!\n" % (epoch))
+        debug("Finished epoch %d, retrain %d!\n" % (epoch, retrains))
         epoch += 1
 
         all_deltas_testing = all_deltas_testing.union(set([input_dec[X] for X in test_x_delta if X != len(input_dec)]))
         trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=MAX_INS, start=epoch*MAX_INS)
         train_x_delta, train_x_pc, train_y, test_x_delta, test_x_pc, test_y = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=train_ratio)
+
+        if (len(train_y)) == 0:
+            retrains += 1
+            epoch = 0
+
+            trace_in_delta, trace_in_pc, trace_out_addr, trace_out, n_input_deltas, n_pcs, n_output_deltas, input_dec, output_dec  = get_embeddings(sys.argv[1], time_steps, lim=MAX_INS, start=epoch*MAX_INS)
+            train_x_delta, train_x_pc, train_y, test_x_delta, test_x_pc, test_y = split_training(trace_in_delta, trace_in_pc, trace_out, time_steps, train_ratio=train_ratio)
+
+        # clear up space
+        del trace_in_delta
+        del trace_in_pc
+        del trace_out
 
 print("\nFinal Testing Accuracy: " + str(mean(testing_accuracies)))
 
