@@ -81,16 +81,12 @@ y_one_hot = tf.one_hot(y, n_classes)
 y_final = tf.reshape(y_one_hot, (-1, n_classes))
 
 # unstack inputs into sequence for static_rnn
-#inputs = tf.unstack(embedded_concat, time_steps, 1);
+inputs = tf.unstack(embedded_concat, time_steps, 1);
 
 ''' defining network '''
 lstm_layer = tf.contrib.rnn.BasicLSTMCell(num_units)
-outputs, _ = tf.nn.dynamic_rnn(lstm_layer, embedded_concat, dtype="float32")
-#outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
+outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
 
-outputs = tf.reshape(outputs, [time_steps, batch_size, -1])
-
-#outputs = tf.reshape(outputs, [-1, num_units])
 prediction = tf.matmul(outputs[-1], out_weights) + out_bias
 top_k = min(10, n_classes)
 
