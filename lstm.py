@@ -174,7 +174,8 @@ with tf.Session() as sess:
 
             batch_y = test_y[iterator*batch_size:(iterator+1)*batch_size]
             test_label = batch_y.reshape((batch_size, 1))
-            testing_accuracies.append(sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
+            if retrains == RETRAINS-1:
+                testing_accuracies.append(sess.run(accuracy_testing, feed_dict={x_delta: test_data_delta, x_pc: test_data_pc, y: test_label}))
             iterator += 1
         
         debug("Finished epoch %d, retrain %d!\n" % (epoch, retrains))
