@@ -17,7 +17,7 @@ def debug(mess):
 MAX_INS = 5000
 
 # retrains
-RETRAINS = 2
+RETRAINS = 5
 
 # number of instructions per prediction
 time_steps = 64

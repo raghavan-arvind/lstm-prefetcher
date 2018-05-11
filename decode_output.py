@@ -222,11 +222,12 @@ if __name__ == '__main__':
         coverage = eval_coverage(predictions[prediction_start:prediction_start+length], output_dec, excl_delta, correct_deltas_epoch, testing_addr_epoch)
         our_accuracy = eval_accuracy(predictions[prediction_start:prediction_start+length], output_dec, excl_delta, correct_deltas_epoch, testing_addr_epoch)
 
-        coverages.append(coverage)
-        our_acc.append(accuracy)
+        if retrains == RETRAINS-1:
+            coverages.append(coverage)
+            our_acc.append(accuracy)
 
         prediction_start += length
-
+        
         correct_deltas.extend(correct_deltas_epoch)
         testing_addr.extend(testing_addr_epoch)
         trace_out.extend(trace_out_epoch)
@@ -237,7 +238,7 @@ if __name__ == '__main__':
     assert output_dec == output_dec_read, "Output decoders don't match!"
 
     #predictions = predictions[:len(correct_deltas)]
-    assert len(predictions) == len(correct_deltas), "# predictions = %d, # correct deltas = %d" % (len(predictions), len(correct_deltas))
+    #assert len(predictions) == len(correct_deltas), "# predictions = %d, # correct deltas = %d" % (len(predictions), len(correct_deltas))
     
     # make sure first delta lines up
     if correct_deltas[1] != excl_delta:
