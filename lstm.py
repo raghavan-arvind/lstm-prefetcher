@@ -14,7 +14,7 @@ def debug(mess):
         sys.stdout.flush()
 
 # max number of instructions we can handle
-MAX_INS = 5000
+MAX_INS = 500000
 
 # retrains
 RETRAINS = 5
@@ -29,7 +29,7 @@ num_units = 128
 learning_rate = 0.001
 
 # number of instructions per batch
-batch_size = 32
+batch_size = 64
 
 # how many training/testing sets
 train_ratio = 0.70
@@ -84,7 +84,7 @@ y_final = tf.reshape(y_one_hot, (-1, n_classes))
 inputs = tf.unstack(embedded_concat, time_steps, 1);
 
 ''' defining network '''
-lstm_layer = tf.contrib.rnn.BasicLSTMCell(num_units)
+lstm_layer = tf.contrib.cudnn_rnn.CudnnCompatibleLSTMCell(num_units)
 outputs,_ = rnn.static_rnn(lstm_layer, inputs, dtype="float32")
 
 prediction = tf.matmul(outputs[-1], out_weights) + out_bias

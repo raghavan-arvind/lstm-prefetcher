@@ -3,8 +3,8 @@ echo "Submitting prefetching LSTM jobs"
 
 GROUP='GRAD'
 PROJECT='ARCHITECTURE'
-DESCR='LSTM prefetcher training session'
-GPU=true
+DESCR='LSTM prefetcher stats collector'
+GPU=false
 EMAIL='pabstmatthew@cs.utexas.edu'
 
 #ARRAY=('astar_163B' 'bwaves_1861B' 'bzip2_183B' 'cactusADM_734B' 'gcc_13B' 'GemsFDTD_109B' 'gobmk_135B' 'gromacs_1B' 'lbm_94B' 'leslie3d_1116B' 'libquantum_1210B' 'mcf_46B' 'milc_360B' 'omnetpp_340B' 'perlbench_53B' 'soplex_66B' 'sphinx3_2520B' 'wrf_1212B' 'xalancbmk_748B' 'zeusmp_600B')
@@ -13,27 +13,25 @@ ARRAY=('astar_163B' 'bwaves_1861B' 'GemsFDTD_109B' 'leslie3d_1116B' 'libquantum_
 ELEMENTS=${#ARRAY[@]}
 
 input_dir="/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace"
-output_dir="/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace"
+output_dir="/projects/coursework/2018-spring/cs395t-lin/lstm/500k-1r/"
 
 for (( i=0; i<$ELEMENTS; i++))
 do
     benchmark=${ARRAY[${i}]}
     trace_file="$input_dir/$benchmark"".txt"
-    train_file="$trace_file"
-    script_file="$input_dir/$benchmark"".sh"
-    stats_file="$input_dir/$benchmark"".stats"
-    condor_file="$input_dir/$benchmark"".condor"
-    output_file="$output_dir/$benchmark"".out"
+    script_file="$input_dir/$benchmark""_stats.sh"
+    stats_file="$output_dir/$benchmark""_d4.stats"
+    condor_file="$input_dir/$benchmark""_stats.condor"
 
     if test -f $trace_file; then
-        echo "Training on" $benchmark "from" $trace_file
+        echo "Evaluating" $benchmark "from" $trace_file
         
         # create executable script
         echo "#!/bin/bash" > $script_file
         echo "export PATH=\"/opt/cuda-8.0/lib64:\$PATH\"" >> $script_file
         echo "export LD_LIBRARY_PATH=\"/opt/cuda-8.0/lib64:\$LD_LIBRARY_PATH\"" >> $script_file
         echo "export LD_LIBRARY_PATH=\"/u/matthewp/cuda/lib64:\$LD_LIBRARY_PATH\"" >> $script_file
-        echo "python3 /u/matthewp/lstm.py $trace_file &> $output_file" >> $script_file
+        echo "python3 /u/matthewp/Downloads/decode_output.py $benchmark &> $stats_file" >> $script_file
         chmod +x $script_file
 
         # create condor file

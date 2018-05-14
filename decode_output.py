@@ -12,8 +12,9 @@ MAX_INS = 500000
 def mean(x):
     return sum(x) / len(x)
 
-#trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
-trace_dir = ""
+trace_dir = "/scratch/cluster/zshi17/ChampSimulator/CRCRealOutput/0426-LLC-trace/"
+out_dir = "/projects/coursework/2018-spring/cs395t-lin/lstm/500k-1r/"
+#trace_dir = ""
 
 time_steps = 64
 
@@ -27,7 +28,7 @@ retrains_str = "Retrains: "
 
 # reads the output file
 def read_output(filename):
-    debug("Reading "+ trace_dir + filename+".out"+ " for predictions ...\n")
+    debug("Reading "+ out_dir + filename+".out"+ " for predictions ...\n")
     
     accuracy = 0.0
     predictions = []
@@ -41,7 +42,7 @@ def read_output(filename):
     reading_output_dec = False
     
     # crawl output
-    output_file = open(trace_dir+filename+".out", "r")
+    output_file = open(out_dir+filename+".out", "r")
     for line in output_file:
         # strip tensorflow nonsense
         if "CPU" in line and "2018" in line:
@@ -81,8 +82,8 @@ def eval_recall(predictions, output_dec, excl_delta, output_deltas):
     intersect = [x for x in predicted_deltas if x in set(output_deltas)]
     return len(intersect)/len(output_deltas)
 
-degree = 1
-window_size = 100
+degree = 2
+window_size = 128
 
 def eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr):
     debug("Evaluating accuracy ...\n")
@@ -224,7 +225,7 @@ if __name__ == '__main__':
 
         if retrains == RETRAINS-1:
             coverages.append(coverage)
-            our_acc.append(accuracy)
+            our_acc.append(our_accuracy)
 
         prediction_start += length
         
@@ -248,12 +249,12 @@ if __name__ == '__main__':
         debug("Warning: can't check alignment of deltas w/ addresses!")
 
 
-    recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
+    #recall = eval_recall(predictions, output_dec, excl_delta, input_deltas)
     #kcoverage = eval_coverage(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
     #our_accuracy = eval_accuracy(predictions, output_dec, excl_delta, correct_deltas, testing_addr)
 
     print("precision: " + str(accuracy))
-    print("recall: " + str(recall))
+    #print("recall: " + str(recall))
     print("degree: " + str(degree))
     print("coverage: " + str(mean(coverages)))
     print("accuracy: " + str(mean(our_acc)))
